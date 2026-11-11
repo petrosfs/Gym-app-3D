@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel=manifest href=manifest.webmanifest><meta name=theme-color content="#b01f66"><link rel=apple-touch-icon href=icons/apple-touch-icon.png><meta name=mobile-web-app-capable content=yes><meta name=apple-mobile-web-app-capable content=yes><meta name=apple-mobile-web-app-title content="Προπόνηση"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel=manifest href=manifest.webmanifest><meta name=theme-color content="#b01f66"><link rel=icon href=icons/icon.svg type="image/svg+xml"><link rel=icon href=icons/icon-192.png type="image/png" sizes="192x192"><link rel=apple-touch-icon href=icons/apple-touch-icon.png><meta name=mobile-web-app-capable content=yes><meta name=apple-mobile-web-app-capable content=yes><meta name=apple-mobile-web-app-title content="Προπόνηση"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Πλάνο Προπόνησης</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sofia+Sans+Condensed:wght@600;800&display=swap">
 <style>
@@ -1364,6 +1364,35 @@ const WEEKS=[['Βάση','Σταμάτα 2 επαναλήψεις πριν τη�
 const WARM={U:['5′ κωπηλατική ή ελλειπτικό, ελαφριά ένταση','Κυκλικές κινήσεις ώμων και band pull-aparts 2×15','Face pull με ελαφρύ βάρος 2×15','1–2 προθερμαντικά σετ στην πρώτη άσκηση (50% και 75% του βάρους)'],
  L:['5′ ποδήλατο ή διάδρομος με κλίση','Αιωρήσεις ποδιών 10 ανά πόδι','Καθίσματα με το βάρος του σώματος 2×10 και γέφυρα γλουτών 2×12','1–2 προθερμαντικά σετ στην πρώτη άσκηση (50% και 75% του βάρους)'],
  F:['5′ κωπηλατική','Καθίσματα με το βάρος του σώματος 2×10','Band pull-aparts 2×15','1–2 προθερμαντικά σετ στις δύο πρώτες ασκήσεις']};
+// Αποθεραπεία: χαλαρή αερόβια και στατικές διατάσεις (ACSM: 10–30″ ανά διάταση για τους περισσότερους ενήλικες, 30–60″ για άτομα 65+, συνολικά ~60″ ανά μυϊκή ομάδα)
+const CD={U:[['Στήθος','Πήχεις στο πλαίσιο της πόρτας στο ύψος των ώμων, μικρό βήμα μπροστά μέχρι να νιώσεις τάση στο στήθος.'],
+  ['Πλατύς ραχιαίος','Πιάσε ένα σταθερό σημείο στο ύψος της μέσης και κάθισε πίσω με τα ισχία, χέρια τεντωμένα, πλάτη ίσια.'],
+  ['Οπίσθιος ώμος','Φέρε το χέρι οριζόντια μπροστά από το στήθος και πίεσέ το απαλά από τον αγκώνα με το άλλο χέρι.'],
+  ['Τρικέφαλοι','Χέρι πίσω από το κεφάλι, αγκώνας προς τα πάνω· με το άλλο χέρι τράβα απαλά τον αγκώνα προς τα μέσα.'],
+  ['Δικέφαλοι και πήχεις','Χέρι τεντωμένο στο πλάι, παλάμη στον τοίχο· στρίψε σιγά το σώμα μακριά από τον τοίχο.'],
+  ['Αυχένας και τραπεζοειδής','Γείρε το κεφάλι στο πλάι, αυτί προς ώμο, με τον αντίθετο ώμο χαμηλά.']],
+ L:[['Τετρακέφαλοι','Όρθια με στήριγμα, πιάσε τον αστράγαλο και φέρε τη φτέρνα προς τον γλουτό, γόνατα δίπλα-δίπλα.'],
+  ['Οπίσθιοι μηριαίοι','Ένα πόδι τεντωμένο μπροστά (στο πάτωμα ή σε χαμηλό πάγκο), σκύψε από τα ισχία με ίσια πλάτη.'],
+  ['Γλουτοί','Ανάσκελα (ή καθιστά σε καρέκλα), αστράγαλος πάνω στο αντίθετο γόνατο, φέρε τον μηρό προς το στήθος.'],
+  ['Καμπτήρες ισχίου','Μισό γονάτισμα, σφίξε τον γλουτό του πίσω ποδιού και σπρώξε απαλά τη λεκάνη μπροστά.'],
+  ['Προσαγωγοί','Καθιστά, πέλματα ενωμένα και γόνατα προς τα έξω· κλίση μπροστά από τα ισχία.'],
+  ['Γάμπες','Χέρια στον τοίχο, πίσω πόδι τεντωμένο με τη φτέρνα στο έδαφος, λύγισε το μπροστινό γόνατο.']],
+ F:[['Τετρακέφαλοι','Όρθια με στήριγμα, φτέρνα προς τον γλουτό, γόνατα δίπλα-δίπλα.'],
+  ['Οπίσθιοι μηριαίοι','Ένα πόδι τεντωμένο μπροστά, σκύψε από τα ισχία με ίσια πλάτη.'],
+  ['Καμπτήρες ισχίου','Μισό γονάτισμα, σφίξε τον γλουτό του πίσω ποδιού, λεκάνη μπροστά.'],
+  ['Στήθος','Πήχεις στο πλαίσιο της πόρτας, μικρό βήμα μπροστά.'],
+  ['Πλατύς ραχιαίος','Πιάσε σταθερό σημείο και κάθισε πίσω με τα ισχία, χέρια τεντωμένα.'],
+  ['Γάμπες','Χέρια στον τοίχο, πίσω πόδι τεντωμένο, φτέρνα στο έδαφος.']]};
+function cdInfo(){const a=S.set.age,g=S.set.ag,older=a>0?a>=50:(g==='50-64'||g==='65p'),senior=ageInfo().senior;
+  const walk=older?5:3,sec=senior?60:45;
+  // 6 διατάσεις × 2 πλευρές + περπάτημα + 1′ αναπνοή
+  return{older,senior,walk,hold:senior?'30–60″, 1–2 φορές ανά πλευρά (~60″ συνολικά)':'20–30″, 1–2 φορές ανά πλευρά',mins:Math.round(walk+1+12*sec/60)}}
+function coolCard(tag,d){if(S.set.cool==='off')return'';const c=cdInfo(),open=ui.cool!=null?ui.cool:c.older;
+  return `<details class="card" id="cool"${open?' open':''}><summary>Αποθεραπεία, περίπου ${c.mins}′${c.older?' · συνιστάται':' · προαιρετική'}</summary>
+   <div class="stack" style="margin-top:8px"><p class="small muted">${c.older?'Για την ηλικία σου η αποθεραπεία και οι διατάσεις έχουν μεγαλύτερη σημασία: βοηθούν να διατηρηθεί το εύρος κίνησης των αρθρώσεων και η ισορροπία. ':''}Κάνε τις διατάσεις όσο οι μύες είναι ακόμη ζεστοί. Μέχρι το σημείο ελαφριάς τάσης, όχι πόνου, χωρίς αναπηδήσεις και με κανονική αναπνοή.</p>
+   <ol class="steps small"><li><b>Χαλαρό περπάτημα ή ποδήλατο, ${c.walk}′</b>, για να πέσουν σταδιακά οι παλμοί.</li>${CD[tag].map(([n,t])=>`<li><b>${n}</b> · ${c.hold}. ${t}</li>`).join('')}<li><b>Αναπνοή</b> · 1′ αργές, βαθιές αναπνοές.</li></ol>
+   ${c.older?'<p class="small muted">Κάνε τις όρθιες διατάσεις με στήριγμα (τοίχο ή καρέκλα). Όσες είναι στο πάτωμα μπορούν να γίνουν καθιστά σε πάγκο.</p>':''}
+   <p class="small muted">Μπορείς να την κρύψεις από το Προφίλ.</p></div></details>`}
 const DN=['Δευ','Τρί','Τετ','Πέμ','Παρ','Σάβ','Κυρ'],DNF=['Δευτέρα','Τρίτη','Τετάρτη','Πέμπτη','Παρασκευή','Σάββατο','Κυριακή'];
 const LK=['beg','nov','int','adv','eli'];
 const LVB={beg:'1 · Αρχάριο',nov:'2 · Βασικό',int:'3 · Μέτριο',adv:'4 · Προχωρημένο',eli:'5 · Πολύ προχωρημένο'};
@@ -1424,13 +1453,14 @@ function weekPlan(mon){let p=basePlan(mon);const planned=!!p;if(!p)p=Array(7).fi
   return{p,inf,planned}}
 const planFor=d=>weekPlan(monday(d)).p[dow(d)];
 function setDay(mon,i,val){const p=S.wk[mon]||weekPlan(mon).p;p[i]=val;S.wk[mon]=p}
-function fresh(){const set={sex:'f',exp:null,level:'int',goal:'both',mins:75,avail:[1,1,1,1,1,1,0],n:0,bwEvery:14,h:null,age:null,ag:null,mode:'fixed',modeFrom:null};return{v:1,set,days:suggest(set),swaps:{},start:monday(TODAY),logs:{},done:{},bw:[],ms:[],off:{},wk:{},wa:{},t:0}}
+function fresh(){const set={sex:'f',exp:null,level:'int',goal:'both',mins:75,avail:[1,1,1,1,1,1,0],n:0,bwEvery:14,h:null,age:null,ag:null,cool:'on',mode:'fixed',modeFrom:null};return{v:1,set,days:suggest(set),swaps:{},start:monday(TODAY),logs:{},done:{},bw:[],ms:[],off:{},wk:{},wa:{},t:0}}
 function norm(r){const f=fresh();if(!r||typeof r!=='object')return f;
   const o=Object.assign(f,r);o.set=Object.assign(fresh().set,r.set||{});
   if(!Array.isArray(o.days)||o.days.length!==7)o.days=suggest(o.set);
   o.days=o.days.map(x=>W[x]?x:null);
   for(const k of['swaps','logs','done','off','wk','wa'])if(!o[k]||typeof o[k]!=='object'||Array.isArray(o[k]))o[k]={};
   if(!MODES[o.set.mode])o.set.mode='fixed';
+  if(o.set.cool!=='on'&&o.set.cool!=='off')o.set.cool='on';
   for(const m in o.wk){if(!Array.isArray(o.wk[m])||o.wk[m].length!==7)delete o.wk[m];else o.wk[m]=o.wk[m].map(x=>W[x]?x:null)}
   for(const m in o.wa)if(!Array.isArray(o.wa[m])||o.wa[m].length!==7)delete o.wa[m];
   for(const d in o.off)if(o.off[d]!=='move'&&o.off[d]!=='skip')delete o.off[d];
@@ -1642,6 +1672,7 @@ function vDay(){
      <div class="row" style="margin-top:8px"><button class="btn sm" data-act="open" data-v="${x.id}">Τεχνική</button><button class="btn sm" data-act="swap" data-v="${key}" aria-expanded="${ui.swap===key}">Αλλαγή άσκησης</button></div></div></div>
      ${ui.swap===key?`<div class="alts">${alts(x.id).map(a=>`<button class="btn sm" data-act="pick" data-w="${wid}" data-i="${x.i}" data-v="${a}">${E[a].n}</button>`).join('')||'<span class="small muted">Δεν υπάρχει εναλλακτική για τον ίδιο μυ.</span>'}${(S.swaps[wid]||{})[x.i]?`<button class="btn sm" data-act="pick" data-w="${wid}" data-i="${x.i}" data-v="">Επαναφορά αρχικής</button>`:''}</div>`:''}
      <div class="sets">${rows}</div></section>`});
+  h+=coolCard(W[wid].tag,d);
   h+=`<button class="btn pri" data-act="done">${S.done[d]?'Αναίρεση ολοκλήρωσης':'Ολοκλήρωση προπόνησης'}</button>`;
   return h}
 function restNote(full){return `<div class="card" style="margin-top:10px"><p class="small"><b>Συμβουλή ξεκούρασης.</b> Η προπόνηση και τις 7 μέρες είναι δική σου επιλογή και δεν σε εμποδίζουμε. Οι ειδικοί όμως συνιστούν συνήθως 1–2 μέρες ξεκούρασης την εβδομάδα και ~48 ώρες ανάμεσα σε προπονήσεις των ίδιων μυϊκών ομάδων, γιατί οι μύες χτίζονται στην ανάρρωση. ${full?'Αν θες, άφησε μία μέρα για ξεκούραση ή ελαφριά δραστηριότητα (περπάτημα, διατάσεις, κινητικότητα). ':''}Αν νιώθεις συνεχή κόπωση, πόνο, κακό ύπνο ή χαμηλή διάθεση, πάρε μια μέρα ανάπαυσης.</p></div>`}
@@ -1728,6 +1759,7 @@ function vMe(){
     ${lvCard(false)}
     <div class="field"><span>Στόχος</span>${opt('goal',GL)}${s.goal==='mnt'?'<p class="small muted">Συντήρηση: ένα σετ λιγότερο ανά άσκηση, χωρίς σταδιακή αύξηση και χωρίς εβδομάδα αποφόρτισης.</p>':''}</div>
     <div class="field"><span>Διάρκεια προπόνησης</span>${opt('mins',{45:'45′',60:'60′',75:'75′',90:'90′'})}</div>
+    <div class="field"><span>Αποθεραπεία στο τέλος</span>${opt('cool',{on:'Εμφάνιση',off:'Απόκρυψη'})}<p class="small muted">${(()=>{const c=cdInfo();return `Χαλαρή αερόβια και διατάσεις, περίπου ${c.mins}′, εκτός του χρόνου προπόνησης. `+(c.older?'Για την ηλικία σου συνιστάται και ανοίγει αυτόματα στο τέλος κάθε προπόνησης.':ageInfo().known?'Είναι προαιρετική.':'Είναι προαιρετική. Αν δηλώσεις ηλικία 50+, προσαρμόζεται και προτείνεται.')})()}</p></div>
     <div class="field"><span>Πώς ορίζονται οι μέρες προπόνησης</span>${opt('mode',MODES)}<p class="small muted">${MODED[s.mode]}</p></div>
     <div class="field"><span>${s.mode==='flex'?'Συνήθεις διαθέσιμες μέρες (αρχική επιλογή κάθε εβδομάδας)':s.mode==='week'?'Διαθέσιμες μέρες (πρότυπο)':'Διαθέσιμες μέρες'}</span><div class="opt">${DN.map((d,i)=>`<button aria-pressed="${!!s.avail[i]}" data-act="avail" data-v="${i}">${d}</button>`).join('')}</div></div>${s.avail.every(Boolean)?restNote(false):''}
     <div class="field"><span>Προπονήσεις την εβδομάδα</span>${opt('n',{0:'Πρόταση ('+rn+')',2:'2',3:'3',4:'4',5:'5'})}
@@ -2284,6 +2316,7 @@ document.addEventListener('click',ev=>{
   if(a==='bkexport')bkExport();
   if(a==='bkimport'){const f=document.getElementById('bkfile');if(f)f.click();return}
   render()});
+document.addEventListener('toggle',ev=>{if(ev.target.id==='cool')ui.cool=ev.target.open},true);
 document.addEventListener('change',ev=>{
   const t=ev.target;
   if(t.id==='bkfile'){if(t.files&&t.files[0])bkImport(t.files[0]);t.value='';return}

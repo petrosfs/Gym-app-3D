@@ -1,10 +1,10 @@
 // Service worker: offline λειτουργία. Για νέα έκδοση των αρχείων δεδομένων (JSON) άλλαξε το VERSION.
-const VERSION='v2';
+const VERSION='v3';
 const SHELL = 'gym-shell-' + VERSION;
 const DATA = 'gym-data-' + VERSION;
 const EXT = 'gym-ext-' + VERSION;
 
-const SHELL_FILES = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png'];
+const SHELL_FILES = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png', 'icons/icon.svg'];
 const DATA_FILES = ['char_f.json', 'char_m.json', 'muscles.json'];
 const EXT_FILES = [
   'https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js',

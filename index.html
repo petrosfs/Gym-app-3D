@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel=manifest href=manifest.webmanifest><meta name=theme-color content="#b01f66"><link rel=apple-touch-icon href=icons/apple-touch-icon.png><meta name=mobile-web-app-capable content=yes><meta name=apple-mobile-web-app-capable content=yes><meta name=apple-mobile-web-app-title content="Προπόνηση"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Πλάνο Προπόνησης</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sofia+Sans+Condensed:wght@600;800&display=swap">
 <style>
@@ -1397,13 +1397,14 @@ function suggest(set){
   return best||ord.concat(Array(7).fill(null)).slice(0,7);
 }
 function clash(a,b){const x=W[a].tag,y=W[b].tag;return x===y||x==='F'||y==='F'}
-function fresh(){const set={sex:'f',exp:null,level:'int',goal:'both',mins:75,avail:[1,1,1,1,1,1,0],n:0,bwEvery:14,h:null};return{v:1,set,days:suggest(set),swaps:{},start:monday(TODAY),logs:{},done:{},bw:[],t:0}}
+function fresh(){const set={sex:'f',exp:null,level:'int',goal:'both',mins:75,avail:[1,1,1,1,1,1,0],n:0,bwEvery:14,h:null,age:null,ag:null};return{v:1,set,days:suggest(set),swaps:{},start:monday(TODAY),logs:{},done:{},bw:[],ms:[],t:0}}
 function norm(r){const f=fresh();if(!r||typeof r!=='object')return f;
   const o=Object.assign(f,r);o.set=Object.assign(fresh().set,r.set||{});
   if(!Array.isArray(o.days)||o.days.length!==7)o.days=suggest(o.set);
   o.days=o.days.map(x=>W[x]?x:null);
   for(const k of['swaps','logs','done'])if(!o[k]||typeof o[k]!=='object')o[k]={};
   if(!Array.isArray(o.bw))o.bw=[];
+  if(!Array.isArray(o.ms))o.ms=[];
   return o}
 let S=fresh();
 try{const raw=localStorage.getItem('plano-proponisis');if(raw)S=norm(JSON.parse(raw))}catch(e){}
@@ -1490,12 +1491,61 @@ const bwDue=()=>{const l=bwLast();return!l||(pd(TODAY)-pd(l.d))/864e5>=S.set.bwE
 function bwForm(id){const l=bwLast();return `<div class="row"><input id="${id}" class="bwin" inputmode="decimal" placeholder="${l?String(l.kg).replace('.',','):'π.χ. 62,5'}" aria-label="Σωματικό βάρος σε κιλά"><span class="muted">kg</span><button class="btn sm pri" data-act="bw" data-v="${id}">Καταγραφή</button></div>${ui.bwErr===id?'<p class="warn">Γράψε το βάρος σε κιλά, για παράδειγμα 62,5.</p>':''}`}
 const fnum=(x,d=1)=>x.toFixed(d).replace('.',',');
 function htForm(id){const h=S.set.h;return `<div class="row"><input id="${id}" class="bwin" inputmode="numeric" placeholder="${h?h:'π.χ. 168'}" aria-label="Ύψος σε εκατοστά"><span class="muted">cm</span><button class="btn sm pri" data-act="ht" data-v="${id}">Αποθήκευση</button></div>${ui.htErr===id?'<p class="warn">Γράψε το ύψος σε εκατοστά, για παράδειγμα 168.</p>':''}`}
-function bmiBlock(){const h=S.set.h,l=bwLast();
+const AGS={u18:'Κάτω των 18','18-29':'18–29','30-39':'30–39','40-49':'40–49','50-64':'50–64','65p':'65 και άνω'};
+function ageInfo(){const a=S.set.age,g=S.set.ag;
+  if(a>0)return{known:true,minor:a<18,senior:a>=65};
+  if(g)return{known:true,minor:g==='u18',senior:g==='65p'};
+  return{known:false,minor:false,senior:false}}
+function ageForm(id){const a=S.set.age;return `<div class="row"><input id="${id}" class="bwin" inputmode="numeric" placeholder="${a?a:'ακριβής ηλικία'}" aria-label="Ακριβής ηλικία σε έτη"><span class="muted">ετών</span><button class="btn sm pri" data-act="age" data-v="${id}">Αποθήκευση</button></div>${ui.ageErr===id?'<p class="warn">Γράψε την ηλικία σε έτη, από 10 έως 100.</p>':''}`}
+function bmiBlock(){const h=S.set.h,l=bwLast(),ai=ageInfo();
   if(!h)return'<p class="small muted">Με το ύψος και το τελευταίο σωματικό βάρος υπολογίζεται ο Δείκτης Μάζας Σώματος (ΔΜΣ), μια προσεγγιστική ένδειξη.</p>';
   if(!l)return`<p class="small muted num">Ύψος: ${h} cm. Κατάγραψε και σωματικό βάρος για να υπολογιστεί ο ΔΜΣ.</p>`;
-  const m=h/100,v=l.kg/(m*m),lab=v<18.5?'κάτω από το συνηθισμένο εύρος':v<25?'εντός του συνηθισμένου εύρους':v<30?'πάνω από το συνηθισμένο εύρος':'αρκετά πάνω από το συνηθισμένο εύρος';
+  const m=h/100,v=l.kg/(m*m);
+  if(!ai.known)return`<p class="small num"><b>ΔΜΣ ${fnum(v)}</b></p><p class="small muted">Συμπλήρωσε την ηλικία σου παραπάνω. Οι κατηγορίες του ΔΜΣ ισχύουν για ενήλικες και ερμηνεύονται με βάση την ηλικία.</p>`;
+  if(ai.minor)return`<p class="small num"><b>ΔΜΣ ${fnum(v)}</b></p><p class="small muted">Κάτω από τα 18 ο ΔΜΣ δεν κατατάσσεται με τα όρια των ενηλίκων. Ερμηνεύεται με καμπύλες ανά ηλικία και φύλο, από γιατρό ή παιδίατρο.</p>`;
+  const lab=v<18.5?'κάτω από το συνηθισμένο εύρος':v<25?'εντός του συνηθισμένου εύρους':v<30?'πάνω από το συνηθισμένο εύρος':'αρκετά πάνω από το συνηθισμένο εύρος';
   return`<p class="small num"><b>ΔΜΣ ${fnum(v)}</b> · ${lab}. Για ύψος ${h} cm, ΔΜΣ 18,5–24,9 αντιστοιχεί περίπου σε ${fnum(18.5*m*m,0)}–${fnum(24.9*m*m,0)} kg.</p>
-   <p class="small muted">Ο ΔΜΣ είναι προσεγγιστικός: ισχύει για ενήλικες, δεν ξεχωρίζει τη μυϊκή μάζα από το λίπος και δεν είναι ιατρική εκτίμηση. Για την υγεία σου μίλα με γιατρό.</p>`}
+   <p class="small muted">Ο ΔΜΣ είναι προσεγγιστικός: δεν ξεχωρίζει τη μυϊκή μάζα από το λίπος και δεν είναι ιατρική εκτίμηση.${ai.senior?' Από τα 65 και άνω ερμηνεύεται με επιφύλαξη, γιατί ένα ελαφρώς υψηλότερο βάρος μπορεί να έχει προστατευτική επίδραση.':''} Για την υγεία σου μίλα με γιατρό.</p>`}
+// ---------- Πρόσθετες μετρήσεις σώματος (προαιρετικές) ----------
+const MS={waist:['Μέση',40,250],hip:['Ισχία',50,250],chest:['Θώρακας',50,250],arm:['Μπράτσο (χαλαρό)',10,80],thigh:['Μηρός',20,120]};
+const MSHOW={
+ waist:'Όρθια/ος, με τα χέρια χαλαρά στα πλάγια. Βρες το κάτω άκρο της τελευταίας ψηλαφητής πλευράς και την κορυφή του οστού του ισχίου (λαγόνια ακρολοφία) και μέτρα στο μέσο της απόστασής τους. Η μεζούρα πάει οριζόντια γύρω από το σώμα και διαβάζεις στο τέλος μιας φυσιολογικής εκπνοής.',
+ hip:'Όρθια/ος, με τα χέρια χαλαρά. Μέτρα γύρω από το πλατύτερο σημείο των γλουτών, με τη μεζούρα οριζόντια. Μέτρα αμέσως μετά τη μέση.',
+ chest:'Όρθια/ος, με τα χέρια χαλαρά στα πλάγια. Η μεζούρα περνά στο ύψος του μέσου του στέρνου, οριζόντια, και διαβάζεις στο τέλος μιας φυσιολογικής εκπνοής.',
+ arm:'Το χέρι κρέμεται χαλαρό στο πλάι, χωρίς να σφίγγεις τον δικέφαλο. Βρες το μέσο ανάμεσα στην κορυφή του ώμου (ακρώμιο) και το άκρο του αγκώνα (ωλέκρανο) και μέτρα εκεί, οριζόντια. Μέτρα πάντα το ίδιο χέρι.',
+ thigh:'Όρθια/ος, με το βάρος ίσα στα δύο πόδια. Μέτρα στο μέσο ανάμεσα στη βουβωνική πτυχή και το πάνω άκρο της επιγονατίδας, κάθετα στον άξονα του μηρού. Μέτρα πάντα το ίδιο πόδι.'};
+function lastMs(k){for(let i=S.ms.length-1;i>=0;i--)if(S.ms[i][k]>0)return S.ms[i];return null}
+const msVal=k=>{const e=lastMs(k);return e?e[k]:null};
+const fm=v=>fnum(v,v%1?1:0);
+function msIndices(){const h=S.set.h,w=msVal('waist'),hp=msVal('hip'),out=[],m=S.set.sex==='m',ai=ageInfo();
+  if(!w)return'';
+  if(!ai.known)return'<p class="small muted">Συμπλήρωσε την ηλικία σου παραπάνω για να ερμηνευτούν οι δείκτες.</p>';
+  if(h){const r=w/h;out.push(`<p class="small num"><b>Λόγος μέσης προς ύψος ${fnum(r,2)}</b> · ${r<.4?'κάτω από 0,4':r<.5?'εντός του εύρους 0,4–0,49, χωρίς αυξημένο κίνδυνο':r<.6?'αυξημένος κίνδυνος για την υγεία (0,5–0,59)':'περαιτέρω αυξημένος κίνδυνος για την υγεία (0,6 και πάνω)'}.</p>`)}
+  else out.push('<p class="small muted">Συμπλήρωσε το ύψος σου για να υπολογιστεί ο λόγος μέσης προς ύψος.</p>');
+  if(hp&&!ai.minor){const r=w/hp,cut=m?.9:.85;out.push(`<p class="small num"><b>Λόγος μέσης προς ισχία ${fnum(r,2)}</b> · ${r>=cut?'στο ή πάνω από':'κάτω από'} το όριο ${m?'0,90':'0,85'} που ο ΠΟΥ συνδέει με αυξημένο κίνδυνο, για το φύλο που έχεις επιλέξει παραπάνω.</p>`)}
+  else if(hp)out.push('<p class="small muted">Ο λόγος μέσης προς ισχία με τα όρια του ΠΟΥ ισχύει για ενήλικες.</p>');
+  return`<div class="stack" style="gap:6px"><span class="small"><b>Δείκτες</b></span>${out.join('')}<p class="small muted">Προσεγγιστικές ενδείξεις, όχι ιατρική εκτίμηση. Ο λόγος μέσης προς ύψος ισχύει για ενήλικες με ΔΜΣ κάτω από 35 και, με τα ίδια όρια, για νέους. Ο λόγος μέσης προς ισχία μπορεί να επηρεάζεται από τη μυϊκή μάζα στα ισχία. Αν κάτι σε ανησυχεί, μίλα με γιατρό. Πηγές: <a href="https://www.nice.org.uk/guidance/NG246" style="color:var(--accent)">NICE NG246</a> (λόγος μέσης/ύψους), ΠΟΥ 2008 (λόγος μέσης/ισχίων), ΠΟΥ STEPS (οδηγίες μέτρησης).</p></div>`}
+function moreBlock(){const open=!!ui.more;
+  const btn=`<div><button class="btn sm" data-act="more" aria-expanded="${open}">${open?'Λιγότερα':'Περισσότερα'}</button></div>`;
+  if(!open)return btn;
+  const fields=Object.keys(MS).map(k=>{const e=lastMs(k),L=MS[k][0];
+    return`<div class="field"><span>${L}</span><div class="row"><input id="ms-${k}" class="bwin" inputmode="decimal" placeholder="${e?fm(e[k]):'cm'}" aria-label="${L} σε εκατοστά"><span class="muted">cm</span></div>
+     ${e?`<p class="small muted num">Τελευταία: ${fm(e[k])} cm (${fmt(e.d)})</p>`:''}
+     ${ui.msErr===k?`<p class="warn">Γράψε την τιμή σε εκατοστά, από ${MS[k][1]} έως ${MS[k][2]}.</p>`:''}
+     <details><summary class="small">Πώς μετράω</summary><p class="small muted" style="margin-top:6px">${MSHOW[k]}</p></details></div>`}).join('');
+  return btn+`<div class="stack" style="gap:12px;margin-top:6px">
+   <p class="small muted">Προαιρετικές μετρήσεις με μεζούρα, για να βλέπεις πώς αλλάζει το σώμα σου και για επιπλέον δείκτες. Συμπλήρωσε μόνο όσες θες· δεν χρειάζονται για να χρησιμοποιείς την εφαρμογή. Αν οι μετρήσεις σού προκαλούν άγχος ή ανησυχία για το σώμα σου, παράλειψέ τες.</p>
+   <details class="card"><summary>Γενικές οδηγίες μέτρησης</summary><ul class="err small" style="margin-top:8px">
+    <li>Χρησιμοποίησε εύκαμπτη, μη ελαστική μεζούρα, π.χ. ραπτικής.</li>
+    <li>Μέτρα σε γυμνό δέρμα ή με πολύ λεπτό ρούχο· τα ρούχα αλλοιώνουν τη μέτρηση.</li>
+    <li>Στάσου όρθια/ος και χαλαρά, με το βάρος ίσα στα δύο πόδια και τα χέρια στα πλάγια.</li>
+    <li>Η μεζούρα πρέπει να είναι οριζόντια, παράλληλη με το δάπεδο, και να εφάπτεται χωρίς να πιέζει το δέρμα.</li>
+    <li>Μην κρατάς την αναπνοή και μην τραβάς την κοιλιά μέσα· διάβασε στο τέλος μιας φυσιολογικής εκπνοής.</li>
+    <li>Επανάλαβε τη μέτρηση και, αν διαφέρουν, κράτα τον μέσο όρο. Μέτρα πάντα με τον ίδιο τρόπο και στο ίδιο σημείο, για να συγκρίνονται οι τιμές.</li></ul></details>
+   ${fields}
+   ${ui.msErr==='none'?'<p class="warn">Συμπλήρωσε τουλάχιστον μία μέτρηση.</p>':''}
+   <div class="row"><button class="btn pri" data-act="ms">Καταγραφή μετρήσεων</button></div>
+   ${msIndices()}</div>`}
 function bwCard(){if(ui.date!==TODAY||!bwDue())return'';const l=bwLast();
   return `<div class="card stack" style="gap:8px"><b>${l?'Ώρα για ενημέρωση βάρους':'Πρόσθεσε το βάρος σου'}</b><p class="small muted">${l?`Τελευταία καταγραφή ${fmt(l.d)}: ${String(l.kg).replace('.',',')} kg.`:'Χρησιμοποιείται στις έλξεις, στις βυθίσεις και στη σχετική δύναμη της προόδου.'} Υπενθύμιση κάθε ${S.set.bwEvery} μέρες.</p>${bwForm('bw-day')}</div>`}
 function series(id){const l=S.logs[id]||{};return Object.keys(l).sort().map(d=>{let b=0,top=null;const add=BWX[id]?bwAt(d)||0:0;
@@ -1559,6 +1609,7 @@ function vDay(){
      <div class="sets">${rows}</div></section>`});
   h+=`<button class="btn pri" data-act="done">${S.done[d]?'Αναίρεση ολοκλήρωσης':'Ολοκλήρωση προπόνησης'}</button>`;
   return h}
+function restNote(full){return `<div class="card" style="margin-top:10px"><p class="small"><b>Συμβουλή ξεκούρασης.</b> Η προπόνηση και τις 7 μέρες είναι δική σου επιλογή και δεν σε εμποδίζουμε. Οι ειδικοί όμως συνιστούν συνήθως 1–2 μέρες ξεκούρασης την εβδομάδα και ~48 ώρες ανάμεσα σε προπονήσεις των ίδιων μυϊκών ομάδων, γιατί οι μύες χτίζονται στην ανάρρωση. ${full?'Αν θες, άφησε μία μέρα για ξεκούραση ή ελαφριά δραστηριότητα (περπάτημα, διατάσεις, κινητικότητα). ':''}Αν νιώθεις συνεχή κόπωση, πόνο, κακό ύπνο ή χαμηλή διάθεση, πάρε μια μέρα ανάπαυσης.</p></div>`}
 function vWeek(){
   const mon=monday(ui.date),wk=weekIdx(mon);
   let h=`<div class="head"><span class="eyebrow">Εβδομάδα ${wk+1}/4 · ${WK(wk)[0]}</span><h1>Εβδομαδιαίο πρόγραμμα</h1><p class="muted">Άλλαξε την προπόνηση κάθε μέρας από τη λίστα ή μετακίνησέ τη με τα βέλη.</p></div><div class="week">`;
@@ -1568,7 +1619,7 @@ function vWeek(){
       ${wid?`<p class="small muted num" style="margin-top:4px">${W[wid].sub} · περίπου ${build(wid,wk).est}′</p>`:''}
       ${wid&&nx&&clash(wid,nx)?`<p class="warn" style="margin-top:4px">Ίδιες μυϊκές ομάδες και την επόμενη μέρα (${DN[(i+1)%7]}).</p>`:''}</div>
      <div class="row" style="flex-wrap:nowrap;gap:4px"><button class="btn sm" data-act="mv" data-i="${i}" data-v="-1" aria-label="Μετακίνηση μία μέρα νωρίτερα"${i===0?' disabled':''}>↑</button><button class="btn sm" data-act="mv" data-i="${i}" data-v="1" aria-label="Μετακίνηση μία μέρα αργότερα"${i===6?' disabled':''}>↓</button></div></div>`}
-  h+=`</div><div class="row"><button class="btn pri" data-act="resuggest">Πρότεινε ξανά την εβδομάδα</button><button class="btn" data-act="tab" data-v="me">Άλλαξε στοιχεία</button></div>
+  h+=`</div>${S.days.every(Boolean)?restNote(true):''}<div class="row"><button class="btn pri" data-act="resuggest">Πρότεινε ξανά την εβδομάδα</button><button class="btn" data-act="tab" data-v="me">Άλλαξε στοιχεία</button></div>
    <p class="small muted">Η πρόταση βασίζεται στο προφίλ σου: ${LVN[S.set.level]} επίπεδο, στόχος ${GL[S.set.goal].toLowerCase()}, ${effN(S.set)} προπονήσεις, ${S.set.mins}′ ανά προπόνηση.</p>`;
   return h}
 function vMonth(){
@@ -1613,12 +1664,13 @@ function vMe(){
   return `<div class="head"><span class="eyebrow">Στοιχεία προπόνησης</span><h1>Προφίλ</h1><p class="muted">Με βάση αυτά προτείνεται ο αριθμός των προπονήσεων, οι επαναλήψεις και ο όγκος.</p></div>
    <div class="card stack">
     <div class="field"><span>Φύλο</span>${opt('sex',SEX)}</div>
+    <div class="field"><span>Ηλικία</span>${opt('ag',AGS)}${ageForm('age-me')}${S.set.age?`<p class="small muted">Έχεις δώσει ακριβή ηλικία (${S.set.age}). Αν διαλέξεις ηλικιακή ομάδα, η ακριβής ηλικία διαγράφεται.</p>`:''}${ageInfo().known?'':'<p class="small muted">Η ηλικία χρειάζεται για να ερμηνεύονται σωστά οι δείκτες υγείας παρακάτω.</p>'}</div>
     <div class="field"><span>Εμπειρία με βάρη</span>${opt('exp',EXP)}</div>
     <div class="field"><span>Επίπεδο</span>${opt('level',LVB)}</div>
     ${lvCard(false)}
     <div class="field"><span>Στόχος</span>${opt('goal',GL)}${s.goal==='mnt'?'<p class="small muted">Συντήρηση: ένα σετ λιγότερο ανά άσκηση, χωρίς σταδιακή αύξηση και χωρίς εβδομάδα αποφόρτισης.</p>':''}</div>
     <div class="field"><span>Διάρκεια προπόνησης</span>${opt('mins',{45:'45′',60:'60′',75:'75′',90:'90′'})}</div>
-    <div class="field"><span>Διαθέσιμες μέρες</span><div class="opt">${DN.map((d,i)=>`<button aria-pressed="${!!s.avail[i]}" data-act="avail" data-v="${i}">${d}</button>`).join('')}</div></div>
+    <div class="field"><span>Διαθέσιμες μέρες</span><div class="opt">${DN.map((d,i)=>`<button aria-pressed="${!!s.avail[i]}" data-act="avail" data-v="${i}">${d}</button>`).join('')}</div></div>${s.avail.every(Boolean)?restNote(false):''}
     <div class="field"><span>Προπονήσεις την εβδομάδα</span>${opt('n',{0:'Πρόταση ('+rn+')',2:'2',3:'3',4:'4',5:'5'})}
      <p class="small muted">Πρόταση: ${rn} προπονήσεις, ${ORDER[rn].map(k=>W[k].short).join(' · ')}. ${rn>=4?'Κάθε μυϊκή ομάδα δουλεύει δύο φορές την εβδομάδα.':'Λίγες μέρες, άρα προπονήσεις με βασικές ασκήσεις για όλο το σώμα.'}${s.n>av?' Οι διαθέσιμες μέρες είναι '+av+', οπότε θα προγραμματιστούν '+av+'.':''}</p></div>
     <div class="row"><button class="btn pri" data-act="resuggest">Εφάρμοσε στην εβδομάδα</button><button class="btn" data-act="clrswap">Επαναφορά αρχικών ασκήσεων</button></div>
@@ -1627,7 +1679,7 @@ function vMe(){
      <p class="small muted num">${(()=>{const l=bwLast();if(!l)return'Δεν έχει καταγραφεί ακόμη.';const f=S.bw[0],d=Math.round((l.kg-f.kg)*10)/10;
        return `Τελευταία: ${String(l.kg).replace('.',',')} kg (${fmt(l.d)}).`+(S.bw.length>1?` Μεταβολή από ${fmt(f.d)}: ${d>0?'+':''}${String(d).replace('.',',')} kg.`:'')})()}</p>
      ${S.bw.length>1?spark(S.bw.slice(-12).map(x=>({b:x.kg})),'Τάση σωματικού βάρους'):''}</div>
-    <div class="field"><span>Ύψος</span>${htForm('ht-me')}${bmiBlock()}</div>
+    <div class="field"><span>Ύψος</span>${htForm('ht-me')}${bmiBlock()}${moreBlock()}</div>
     <div class="field"><span>Υπενθύμιση ενημέρωσης βάρους</span>${opt('bwEvery',{7:'Κάθε εβδομάδα',14:'Κάθε 2 εβδομάδες',30:'Κάθε μήνα'})}</div>
     <p class="small muted">Το βάρος δεν αλλάζει το πρόγραμμα. Χρησιμοποιείται για το συνολικό φορτίο στις έλξεις και τις βυθίσεις και για τη σχετική δύναμη στην πρόοδο.</p></div>
    <div class="card stack"><div class="field"><span>Αντίγραφο ασφαλείας</span>
@@ -2135,13 +2187,21 @@ document.addEventListener('click',ev=>{
   if(a==='resuggest'){S.days=suggest(S.set);save();ui.tab='week';window.scrollTo(0,0)}
   if(a==='clrswap'){S.swaps={};save()}
   if(a==='newcycle'){S.start=monday(TODAY);save()}
-  if(a==='set'){const k=b.dataset.k;S.set[k]=['mins','n','bwEvery'].includes(k)?+v:v;save()}
+  if(a==='set'){const k=b.dataset.k;S.set[k]=['mins','n','bwEvery'].includes(k)?+v:v;if(k==='ag')S.set.age=null;save()}
+  if(a==='age'){const inp=document.getElementById(v),n=parseInt(String(inp&&inp.value||'').trim(),10);
+    if(n>=10&&n<=100){ui.ageErr=null;S.set.age=n;S.set.ag=null;save()}else ui.ageErr=v}
   if(a==='setlv'){S.set.level=v;S.lvSkip=null;save()}
   if(a==='skiplv'){S.lvSkip=v;save()}
   if(a==='bw'){const inp=document.getElementById(v),n=parseFloat(String(inp&&inp.value||'').replace(',','.'));
     if(n>25&&n<350){ui.bwErr=null;S.bw=S.bw.filter(x=>x.d!==TODAY);S.bw.push({d:TODAY,kg:Math.round(n*10)/10});S.bw.sort((x,y)=>x.d<y.d?-1:1);save()}else ui.bwErr=v}
   if(a==='ht'){const inp=document.getElementById(v),n=parseFloat(String(inp&&inp.value||'').replace(',','.'));
     if(n>=100&&n<=250){ui.htErr=null;S.set.h=Math.round(n);save()}else ui.htErr=v}
+  if(a==='more')ui.more=!ui.more;
+  if(a==='ms'){const t={};let bad=null;
+    for(const k in MS){const el=document.getElementById('ms-'+k),raw=String(el&&el.value||'').trim();if(!raw)continue;
+      const n=parseFloat(raw.replace(',','.'));if(!(n>=MS[k][1]&&n<=MS[k][2])){bad=k;break}t[k]=Math.round(n*10)/10}
+    if(bad)ui.msErr=bad;else if(!Object.keys(t).length)ui.msErr='none';
+    else{ui.msErr=null;let e=S.ms.find(x=>x.d===TODAY);if(!e){e={d:TODAY};S.ms.push(e)}Object.assign(e,t);S.ms.sort((x,y)=>x.d<y.d?-1:1);save()}}
   if(a==='avail'){S.set.avail[+v]=S.set.avail[+v]?0:1;save()}
   if(a==='bkexport')bkExport();
   if(a==='bkimport'){const f=document.getElementById('bkfile');if(f)f.click();return}
@@ -2159,6 +2219,7 @@ document.addEventListener('change',ev=>{
 document.addEventListener('keydown',ev=>{if(anim.id===null)return;if(ev.key==='Escape')return closeEx();
   if((ev.key==='ArrowLeft'||ev.key==='ArrowRight')&&!/^(INPUT|SELECT|TEXTAREA)$/.test((ev.target.tagName||''))&&!ev.altKey&&!ev.metaKey&&!ev.ctrlKey){ev.preventDefault();navEx(ev.key==='ArrowLeft'?-1:1)}});
 render();
+if('serviceWorker' in navigator)window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 </script>
 
 </body></html>

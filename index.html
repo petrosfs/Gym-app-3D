@@ -81,6 +81,8 @@ select{font:500 14px var(--text);padding:8px;border-radius:8px;border:1px solid 
 .cal button .c{font:600 10px var(--text);color:var(--muted);white-space:nowrap}
 .cal button.rest{background:transparent;border-style:dashed}
 .cal button.done{border-color:var(--ok)} .cal button.done .c{color:var(--ok)}
+.cal button.off{border-color:var(--warn);border-style:dashed;background:transparent} .cal button.off .c{color:var(--warn)}
+.dtin{font:500 15px var(--text);padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
 .cal button.today{outline:2px solid var(--accent);outline-offset:-2px}
 .wk{font:600 12px var(--text);color:var(--muted);margin:10px 0 4px}
 .lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
@@ -1387,6 +1389,7 @@ function recN(set){const av=set.avail.filter(Boolean).length;return Math.max(2,M
 function effN(set){const av=set.avail.filter(Boolean).length||7;return Math.min(set.n||recN(set),av)}
 function suggest(set){
   const n=Math.max(2,effN(set)),ord=ORDER[n],av=set.avail.some(Boolean)?set.avail:[1,1,1,1,1,1,1];
+  if(av.filter(Boolean).length===1){const d=Array(7).fill(null);d[av.findIndex(Boolean)]='FB';return d}
   let best=null,bs=1e9;
   for(let m=0;m<128;m++){const ix=[];for(let i=0;i<7;i++)if(m>>i&1)ix.push(i);
     if(ix.length!==n||ix.some(i=>!av[i]))continue;
@@ -1397,12 +1400,40 @@ function suggest(set){
   return best||ord.concat(Array(7).fill(null)).slice(0,7);
 }
 function clash(a,b){const x=W[a].tag,y=W[b].tag;return x===y||x==='F'||y==='F'}
-function fresh(){const set={sex:'f',exp:null,level:'int',goal:'both',mins:75,avail:[1,1,1,1,1,1,0],n:0,bwEvery:14,h:null,age:null,ag:null};return{v:1,set,days:suggest(set),swaps:{},start:monday(TODAY),logs:{},done:{},bw:[],ms:[],t:0}}
+// ---------- Πρότυπα διαθεσιμότητας ----------
+const MODES={fixed:'Σταθερές μέρες',dates:'Σταθερές μέρες με εξαιρέσεις',week:'Αλλάζουν κάθε εβδομάδα',flex:'Χωρίς σταθερές μέρες'};
+const MODED={fixed:'Το ίδιο πρόγραμμα κάθε εβδομάδα, στις διαθέσιμες μέρες που δηλώνεις παρακάτω.',
+ dates:'Το ίδιο πρόγραμμα κάθε εβδομάδα, αλλά δηλώνεις από πριν συγκεκριμένες ημερομηνίες που δεν μπορείς (στην καρτέλα «Μήνας» ή από τη μέρα). Για κάθε μία διαλέγεις αν η προπόνηση θα μετατεθεί στην επόμενη ελεύθερη μέρα ή θα παραλειφθεί.',
+ week:'Ξεκινάς από το πρότυπο των διαθέσιμων ημερών και στην καρτέλα «Εβδομάδα» το αλλάζεις μόνο για τη συγκεκριμένη εβδομάδα. Την επόμενη εβδομάδα επιστρέφει στο πρότυπο.',
+ flex:'Δεν υπάρχει πρότυπο. Κάθε εβδομάδα δηλώνεις στην καρτέλα «Εβδομάδα» τις μέρες που μπορείς και προτείνεται πρόγραμμα που αποφεύγει, όσο γίνεται, τις ίδιες μυϊκές ομάδες σε διαδοχικές μέρες.'};
+const OFFN={move:'μετάθεση',skip:'παράλειψη'};
+const perWeek=()=>S.set.mode==='week'||S.set.mode==='flex';
+function waFor(mon){return S.wa[mon]||S.wa[addD(mon,-7)]||S.set.avail}
+function wkAvail(mon){return S.set.mode==='flex'?waFor(mon):S.set.avail}
+// Οι εξαιρέσεις ισχύουν στο πρότυπο «με εξαιρέσεις»· όσες έχουν ήδη περάσει μένουν στο ιστορικό
+function offAt(d){return(S.set.mode==='dates'||d<TODAY)?S.off[d]:null}
+function basePlan(mon){const cur=monday(TODAY),m=S.set.mode,w=S.wk[mon];
+  if(w&&(mon<cur||perWeek()))return w.slice();
+  if(m==='flex'&&(!S.set.modeFrom||mon>=S.set.modeFrom))return null;
+  return S.days.slice()}
+function nextFree(p,i,mon){const av=wkAvail(mon);for(let k=i+1;k<7;k++)if(!p[k]&&av[k]&&!offAt(addD(mon,k)))return k;return -1}
+function weekPlan(mon){let p=basePlan(mon);const planned=!!p;if(!p)p=Array(7).fill(null);
+  const inf=p.map(()=>({}));
+  for(let i=0;i<7;i++){const o=offAt(addD(mon,i));if(!o)continue;inf[i].off=o;const w=p[i];if(!w)continue;p[i]=null;
+    if(o==='move'){const k=nextFree(p,i,mon);if(k>=0){p[k]=w;inf[k].from=i;inf[i].to=k}else inf[i].lost=w}else inf[i].skip=w}
+  return{p,inf,planned}}
+const planFor=d=>weekPlan(monday(d)).p[dow(d)];
+function setDay(mon,i,val){const p=S.wk[mon]||weekPlan(mon).p;p[i]=val;S.wk[mon]=p}
+function fresh(){const set={sex:'f',exp:null,level:'int',goal:'both',mins:75,avail:[1,1,1,1,1,1,0],n:0,bwEvery:14,h:null,age:null,ag:null,mode:'fixed',modeFrom:null};return{v:1,set,days:suggest(set),swaps:{},start:monday(TODAY),logs:{},done:{},bw:[],ms:[],off:{},wk:{},wa:{},t:0}}
 function norm(r){const f=fresh();if(!r||typeof r!=='object')return f;
   const o=Object.assign(f,r);o.set=Object.assign(fresh().set,r.set||{});
   if(!Array.isArray(o.days)||o.days.length!==7)o.days=suggest(o.set);
   o.days=o.days.map(x=>W[x]?x:null);
-  for(const k of['swaps','logs','done'])if(!o[k]||typeof o[k]!=='object')o[k]={};
+  for(const k of['swaps','logs','done','off','wk','wa'])if(!o[k]||typeof o[k]!=='object'||Array.isArray(o[k]))o[k]={};
+  if(!MODES[o.set.mode])o.set.mode='fixed';
+  for(const m in o.wk){if(!Array.isArray(o.wk[m])||o.wk[m].length!==7)delete o.wk[m];else o.wk[m]=o.wk[m].map(x=>W[x]?x:null)}
+  for(const m in o.wa)if(!Array.isArray(o.wa[m])||o.wa[m].length!==7)delete o.wa[m];
+  for(const d in o.off)if(o.off[d]!=='move'&&o.off[d]!=='skip')delete o.off[d];
   if(!Array.isArray(o.bw))o.bw=[];
   if(!Array.isArray(o.ms))o.ms=[];
   return o}
@@ -1588,14 +1619,18 @@ function render(){
   document.getElementById('root').innerHTML=(ui.tab==='day'?bkBanner():'')+{day:vDay,week:vWeek,month:vMonth,lib:vLib,me:vMe}[ui.tab]();
 }
 function vDay(){
-  const d=ui.date,wid=S.days[dow(d)],wk=weekIdx(d);
+  const d=ui.date,mon=monday(d),i0=dow(d),wp=weekPlan(mon),wid=wp.p[i0],inf=wp.inf[i0],wk=weekIdx(d);
+  const offTxt=inf.off?`<div class="card stack"><p><b>Έχεις δηλώσει ότι δεν μπορείς αυτή τη μέρα.</b> ${inf.to!=null?`Η προπόνηση «${W[inf.skip||inf.lost||wp.p[inf.to]].n}» μετατέθηκε την ${fmt(addD(mon,inf.to))}.`:inf.lost?`Η προπόνηση «${W[inf.lost].n}» δεν χωρά σε ελεύθερη διαθέσιμη μέρα της ίδιας εβδομάδας, οπότε παραλείπεται.`:inf.skip?`Η προπόνηση «${W[inf.skip].n}» παραλείπεται.`:''}</p>${d>=TODAY?`<div class="row"><button class="btn sm" data-act="offdel" data-v="${d}">Ακύρωση εξαίρεσης</button></div>`:''}</div>`:'';
+  const cant=wid&&d>=TODAY&&!S.done[d]&&S.set.mode!=='fixed'?`<div class="card stack"><p class="small"><b>Δεν μπορείς αυτή τη μέρα;</b> Διάλεξε τι θα γίνει με την προπόνηση.</p><div class="row"><button class="btn sm" data-act="cant" data-v="move">Μετάθεση στην επόμενη ελεύθερη μέρα</button><button class="btn sm" data-act="cant" data-v="skip">Παράλειψη</button></div>${ui.cantMsg?`<p class="warn">${ui.cantMsg}</p>`:''}</div>`:(ui.cantMsg?`<p class="warn">${ui.cantMsg}</p>`:'');
+  ui.cantMsg='';
   let h=`<div class="head"><span class="eyebrow">${d===TODAY?'Σήμερα · ':''}${fmt(d)}</span>
    <div class="row"><h1 class="grow">${wid?W[wid].n:'Ξεκούραση'}</h1><button class="btn sm" data-act="date" data-v="-1" aria-label="Προηγούμενη μέρα">‹</button><button class="btn sm" data-act="date" data-v="1" aria-label="Επόμενη μέρα">›</button></div>`;
-  if(!wid)return h+`<p class="muted">Δεν έχει προγραμματιστεί προπόνηση. Ένας περίπατος 20–30 λεπτών και λίγες διατάσεις βοηθούν την αποκατάσταση.</p></div>${bwCard()}${lvCard(true)}
+  if(!wid&&S.set.mode==='flex'&&!wp.planned)return h+`<p class="muted">Δεν έχεις ορίσει ακόμη τις μέρες αυτής της εβδομάδας.</p></div>${offTxt}<button class="btn pri" data-act="tab" data-v="week">Όρισε την εβδομάδα</button>`;
+  if(!wid)return h+`<p class="muted">Δεν έχει προγραμματιστεί προπόνηση. Ένας περίπατος 20–30 λεπτών και λίγες διατάσεις βοηθούν την αποκατάσταση.</p></div>${offTxt}${cant}${bwCard()}${lvCard(true)}
    <button class="btn" data-act="tab" data-v="week">Δες την εβδομάδα</button>`;
   const b=build(wid,wk);
-  h+=`<p class="muted">${W[wid].sub}</p><div class="row"><span class="chip p">Εβδ. ${wk+1}/4 · ${WK(wk)[0]}</span><span class="chip num">περίπου ${b.est}′</span>${S.done[d]?'<span class="chip ok">Ολοκληρώθηκε</span>':''}</div>
-   <p class="small muted">${WK(wk)[1]}${b.cut?` Ο όγκος προσαρμόστηκε για να χωρά στα ${S.set.mins}′.`:''}</p></div>${bwCard()}${lvCard(true)}
+  h+=`<p class="muted">${W[wid].sub}</p><div class="row"><span class="chip p">Εβδ. ${wk+1}/4 · ${WK(wk)[0]}</span><span class="chip num">περίπου ${b.est}′</span>${inf.from!=null?`<span class="chip s">Μετατέθηκε από ${DNF[inf.from]}</span>`:''}${S.done[d]?'<span class="chip ok">Ολοκληρώθηκε</span>':''}</div>
+   <p class="small muted">${WK(wk)[1]}${b.cut?` Ο όγκος προσαρμόστηκε για να χωρά στα ${S.set.mins}′.`:''}</p></div>${cant}${bwCard()}${lvCard(true)}
    <details class="card"><summary>Προθέρμανση, 8–10′</summary><ol class="steps small" style="margin-top:8px">${WARM[W[wid].tag].map(x=>`<li>${x}</li>`).join('')}</ol></details>`;
   b.it.forEach(x=>{const e=E[x.id],pl=prevLog(x.id,d),cur=(S.logs[x.id]||{})[d]||[],key=wid+':'+x.i;
     let rows='';for(let i=0;i<x.s;i++){const c=cur[i]||[],p=pl&&pl[i]||[];
@@ -1611,25 +1646,48 @@ function vDay(){
   return h}
 function restNote(full){return `<div class="card" style="margin-top:10px"><p class="small"><b>Συμβουλή ξεκούρασης.</b> Η προπόνηση και τις 7 μέρες είναι δική σου επιλογή και δεν σε εμποδίζουμε. Οι ειδικοί όμως συνιστούν συνήθως 1–2 μέρες ξεκούρασης την εβδομάδα και ~48 ώρες ανάμεσα σε προπονήσεις των ίδιων μυϊκών ομάδων, γιατί οι μύες χτίζονται στην ανάρρωση. ${full?'Αν θες, άφησε μία μέρα για ξεκούραση ή ελαφριά δραστηριότητα (περπάτημα, διατάσεις, κινητικότητα). ':''}Αν νιώθεις συνεχή κόπωση, πόνο, κακό ύπνο ή χαμηλή διάθεση, πάρε μια μέρα ανάπαυσης.</p></div>`}
 function vWeek(){
-  const mon=monday(ui.date),wk=weekIdx(mon);
-  let h=`<div class="head"><span class="eyebrow">Εβδομάδα ${wk+1}/4 · ${WK(wk)[0]}</span><h1>Εβδομαδιαίο πρόγραμμα</h1><p class="muted">Άλλαξε την προπόνηση κάθε μέρας από τη λίστα ή μετακίνησέ τη με τα βέλη.</p></div><div class="week">`;
-  for(let i=0;i<7;i++){const d=addD(mon,i),wid=S.days[i],nx=S.days[(i+1)%7];
+  const mon=monday(ui.date),wk=weekIdx(mon),m=S.set.mode,pw=perWeek(),wp=weekPlan(mon),nxt=weekPlan(addD(mon,7)).p[0],cur=monday(TODAY);
+  const rng=`${pd(mon).getDate()}/${pd(mon).getMonth()+1} – ${pd(addD(mon,6)).getDate()}/${pd(addD(mon,6)).getMonth()+1}`;
+  let h=`<div class="head"><span class="eyebrow">Εβδομάδα ${wk+1}/4 · ${WK(wk)[0]}</span>
+   <div class="row"><h1 class="grow">Εβδομαδιαίο πρόγραμμα</h1><button class="btn sm" data-act="date" data-v="-7" aria-label="Προηγούμενη εβδομάδα">‹</button><button class="btn sm" data-act="date" data-v="7" aria-label="Επόμενη εβδομάδα">›</button></div>
+   <p class="small muted num">${rng}${mon===cur?' · αυτή η εβδομάδα':''} · ${MODES[m]}</p>
+   <p class="muted">${pw?'Οι αλλαγές ισχύουν μόνο για αυτή την εβδομάδα.':'Οι αλλαγές ισχύουν για κάθε εβδομάδα.'} Άλλαξε την προπόνηση κάθε μέρας από τη λίστα ή μετακίνησέ τη με τα βέλη.</p></div>`;
+  if(m==='flex'){const wa=waFor(mon);
+    h+=`<div class="card stack"><div class="field"><span>Μέρες που μπορείς αυτή την εβδομάδα</span><div class="opt">${DN.map((d,i)=>`<button aria-pressed="${!!wa[i]}" data-act="wavail" data-v="${i}">${d}</button>`).join('')}</div></div>
+     ${wa.every(Boolean)?restNote(false):''}
+     <div class="row"><button class="btn pri" data-act="wsuggest">${wp.planned?'Πρότεινε ξανά με αυτές τις μέρες':'Φτιάξε το πρόγραμμα της εβδομάδας'}</button></div>
+     ${ui.wErr?'<p class="warn">Διάλεξε τουλάχιστον μία μέρα.</p>':''}</div>`;ui.wErr=0}
+  h+='<div class="week">';
+  for(let i=0;i<7;i++){const d=addD(mon,i),wid=wp.p[i],sel=pw?wid:S.days[i],nx=i<6?wp.p[i+1]:nxt,f=wp.inf[i];
     h+=`<div class="card wday${d===TODAY?' today':''}"><span class="d">${DN[i]}</span>
-     <div style="min-width:0"><select id="day-${i}" data-day="${i}" aria-label="Προπόνηση ${DNF[i]}"><option value="">Ξεκούραση</option>${Object.keys(W).map(k=>`<option value="${k}"${wid===k?' selected':''}>${W[k].n}</option>`).join('')}</select>
+     <div style="min-width:0"><select id="day-${i}" data-day="${i}" aria-label="Προπόνηση ${DNF[i]}"><option value="">Ξεκούραση</option>${Object.keys(W).map(k=>`<option value="${k}"${sel===k?' selected':''}>${W[k].n}</option>`).join('')}</select>
       ${wid?`<p class="small muted num" style="margin-top:4px">${W[wid].sub} · περίπου ${build(wid,wk).est}′</p>`:''}
+      ${f.off?`<p class="warn" style="margin-top:4px">Δεν μπορείς αυτή τη μέρα${f.to!=null?` · μετατέθηκε ${DNF[f.to]}`:f.lost?' · δεν χωρά αλλού, παραλείπεται':f.skip?' · παραλείπεται':''}.</p>`:''}
+      ${f.from!=null?`<p class="small" style="margin-top:4px">Μετατέθηκε εδώ από ${DNF[f.from]}: ${W[wid].n}.</p>`:''}
       ${wid&&nx&&clash(wid,nx)?`<p class="warn" style="margin-top:4px">Ίδιες μυϊκές ομάδες και την επόμενη μέρα (${DN[(i+1)%7]}).</p>`:''}</div>
      <div class="row" style="flex-wrap:nowrap;gap:4px"><button class="btn sm" data-act="mv" data-i="${i}" data-v="-1" aria-label="Μετακίνηση μία μέρα νωρίτερα"${i===0?' disabled':''}>↑</button><button class="btn sm" data-act="mv" data-i="${i}" data-v="1" aria-label="Μετακίνηση μία μέρα αργότερα"${i===6?' disabled':''}>↓</button></div></div>`}
-  h+=`</div>${S.days.every(Boolean)?restNote(true):''}<div class="row"><button class="btn pri" data-act="resuggest">Πρότεινε ξανά την εβδομάδα</button><button class="btn" data-act="tab" data-v="me">Άλλαξε στοιχεία</button></div>
-   <p class="small muted">Η πρόταση βασίζεται στο προφίλ σου: ${LVN[S.set.level]} επίπεδο, στόχος ${GL[S.set.goal].toLowerCase()}, ${effN(S.set)} προπονήσεις, ${S.set.mins}′ ανά προπόνηση.</p>`;
+  h+=`</div>${wp.p.every(Boolean)?restNote(true):''}<div class="row">${m==='week'?(S.wk[mon]?'<button class="btn pri" data-act="wkreset">Επαναφορά στο πρότυπο</button>':''):m==='flex'?'':'<button class="btn pri" data-act="resuggest">Πρότεινε ξανά την εβδομάδα</button>'}<button class="btn" data-act="tab" data-v="me">Άλλαξε στοιχεία</button></div>
+   <p class="small muted">Η πρόταση βασίζεται στο προφίλ σου: ${LVN[S.set.level]} επίπεδο, στόχος ${GL[S.set.goal].toLowerCase()}, ${effN(m==='flex'?{...S.set,avail:waFor(mon)}:S.set)} προπονήσεις, ${S.set.mins}′ ανά προπόνηση.</p>`;
   return h}
+function offCard(){const er=ui.offErr;ui.offErr='';const up=Object.keys(S.off).filter(d=>d>=TODAY).sort(),om=ui.offMode||'move';
+  return `<div class="card stack"><div class="field"><span>Μέρες που δεν μπορείς</span>
+   <p class="small muted">Διάλεξε μία ημερομηνία ή ένα διάστημα (π.χ. διακοπές) και τι θα γίνεται με όσες προπονήσεις πέφτουν εκεί.</p>
+   <div class="row"><label class="small">Από <input type="date" id="off-from" class="dtin" min="${TODAY}" value="${ui.offF||''}"></label><label class="small">Έως (προαιρετικά) <input type="date" id="off-to" class="dtin" min="${TODAY}" value="${ui.offT||''}"></label></div>
+   <div class="opt">${Object.keys(OFFN).map(k=>`<button aria-pressed="${om===k}" data-act="offmode" data-v="${k}">${k==='move'?'Μετάθεση στην επόμενη ελεύθερη μέρα':'Παράλειψη'}</button>`).join('')}</div>
+   <div class="row"><button class="btn pri" data-act="offadd">Προσθήκη</button></div>
+   ${er?`<p class="warn">${er}</p>`:''}
+   ${up.length?`<ul class="stack small" style="list-style:none;padding:0;margin:0;gap:6px">${up.map(d=>`<li class="row" style="justify-content:space-between"><span>${fmt(d)} · ${OFFN[S.off[d]]}</span><span class="row" style="gap:4px"><button class="btn sm" data-act="offtog" data-v="${d}">Αλλαγή σε ${S.off[d]==='move'?'παράλειψη':'μετάθεση'}</button><button class="btn sm" data-act="offdel" data-v="${d}" aria-label="Διαγραφή ${fmt(d)}">×</button></span></li>`).join('')}</ul>`:'<p class="small muted">Δεν έχεις δηλώσει ακόμη μέρες.</p>'}
+   <p class="small muted">Η μετάθεση γίνεται μέσα στην ίδια εβδομάδα, σε διαθέσιμη μέρα χωρίς προπόνηση. Αν δεν υπάρχει, η προπόνηση παραλείπεται.</p></div></div>`}
 function vMonth(){
   let h=`<div class="head"><span class="eyebrow">Κύκλος 4 εβδομάδων</span><h1>Μηνιαίο πλάνο</h1><p class="muted">${S.set.goal==='mnt'?'Συντήρηση: ίδιο φορτίο όλο τον μήνα.':'Τρεις εβδομάδες σταδιακής επιβάρυνσης και μία αποφόρτισης.'} Πάτησε μια μέρα για να την ανοίξεις.</p></div>
    <div class="cal">${DN.map(x=>`<span class="hd">${x}</span>`).join('')}</div>`;
   for(let w=0;w<4;w++){h+=`<p class="wk">Εβδ. ${w+1} · ${WK(w)[0]} <span style="font-weight:400">— ${WK(w)[1]}</span></p><div class="cal">`;
-    for(let i=0;i<7;i++){const d=addD(S.start,w*7+i),wid=S.days[i],dn=S.done[d];
-      h+=`<button class="${wid?'':'rest '}${dn?'done ':''}${d===TODAY?'today':''}" data-act="goto" data-v="${d}" aria-label="${fmt(d)}: ${wid?W[wid].n:'Ξεκούραση'}${dn?', ολοκληρώθηκε':''}"><span class="n">${pd(d).getDate()}</span><span class="c">${dn?'✓ ':''}${wid?W[wid].short:'·'}</span></button>`}
+    const wp=weekPlan(addD(S.start,w*7));
+    for(let i=0;i<7;i++){const d=addD(S.start,w*7+i),wid=wp.p[i],dn=S.done[d],off=wp.inf[i].off;
+      h+=`<button class="${wid?'':'rest '}${off?'off ':''}${dn?'done ':''}${d===TODAY?'today':''}" data-act="goto" data-v="${d}" aria-label="${fmt(d)}: ${off?'δεν μπορείς, ':''}${wid?W[wid].n:'Ξεκούραση'}${dn?', ολοκληρώθηκε':''}"><span class="n">${pd(d).getDate()}</span><span class="c">${dn?'✓ ':''}${wid?W[wid].short:off?'✕':'·'}</span></button>`}
     h+='</div>'}
   h+=`<div class="row"><button class="btn" data-act="newcycle">Νέος κύκλος από αυτή την εβδομάδα</button></div>`;
+  if(S.set.mode==='dates')h+=offCard();
   const ids=Object.keys(S.logs).filter(id=>E[id]&&series(id).length);
   h+=`<h2 style="margin-top:8px">Πρόοδος</h2>`;
   if(!ids.length)h+=`<p class="muted">Εδώ θα εμφανίζεται η εξέλιξη ανά άσκηση. Κατάγραψε κιλά και επαναλήψεις στην καρτέλα «Σήμερα» για να ξεκινήσει.</p>`;
@@ -1670,7 +1728,8 @@ function vMe(){
     ${lvCard(false)}
     <div class="field"><span>Στόχος</span>${opt('goal',GL)}${s.goal==='mnt'?'<p class="small muted">Συντήρηση: ένα σετ λιγότερο ανά άσκηση, χωρίς σταδιακή αύξηση και χωρίς εβδομάδα αποφόρτισης.</p>':''}</div>
     <div class="field"><span>Διάρκεια προπόνησης</span>${opt('mins',{45:'45′',60:'60′',75:'75′',90:'90′'})}</div>
-    <div class="field"><span>Διαθέσιμες μέρες</span><div class="opt">${DN.map((d,i)=>`<button aria-pressed="${!!s.avail[i]}" data-act="avail" data-v="${i}">${d}</button>`).join('')}</div></div>${s.avail.every(Boolean)?restNote(false):''}
+    <div class="field"><span>Πώς ορίζονται οι μέρες προπόνησης</span>${opt('mode',MODES)}<p class="small muted">${MODED[s.mode]}</p></div>
+    <div class="field"><span>${s.mode==='flex'?'Συνήθεις διαθέσιμες μέρες (αρχική επιλογή κάθε εβδομάδας)':s.mode==='week'?'Διαθέσιμες μέρες (πρότυπο)':'Διαθέσιμες μέρες'}</span><div class="opt">${DN.map((d,i)=>`<button aria-pressed="${!!s.avail[i]}" data-act="avail" data-v="${i}">${d}</button>`).join('')}</div></div>${s.avail.every(Boolean)?restNote(false):''}
     <div class="field"><span>Προπονήσεις την εβδομάδα</span>${opt('n',{0:'Πρόταση ('+rn+')',2:'2',3:'3',4:'4',5:'5'})}
      <p class="small muted">Πρόταση: ${rn} προπονήσεις, ${ORDER[rn].map(k=>W[k].short).join(' · ')}. ${rn>=4?'Κάθε μυϊκή ομάδα δουλεύει δύο φορές την εβδομάδα.':'Λίγες μέρες, άρα προπονήσεις με βασικές ασκήσεις για όλο το σώμα.'}${s.n>av?' Οι διαθέσιμες μέρες είναι '+av+', οπότε θα προγραμματιστούν '+av+'.':''}</p></div>
     <div class="row"><button class="btn pri" data-act="resuggest">Εφάρμοσε στην εβδομάδα</button><button class="btn" data-act="clrswap">Επαναφορά αρχικών ασκήσεων</button></div>
@@ -2182,12 +2241,31 @@ document.addEventListener('click',ev=>{
   if(a==='cat')ui.cat=v;
   if(a==='swap')ui.swap=ui.swap===v?null:v;
   if(a==='pick'){const w=b.dataset.w,i=b.dataset.i;S.swaps[w]=S.swaps[w]||{};if(v)S.swaps[w][i]=v;else delete S.swaps[w][i];ui.swap=null;save()}
-  if(a==='done'){if(S.done[ui.date])delete S.done[ui.date];else S.done[ui.date]=S.days[dow(ui.date)];save()}
-  if(a==='mv'){const i=+b.dataset.i,j=i+ +v;if(j>=0&&j<7){[S.days[i],S.days[j]]=[S.days[j],S.days[i]];save()}}
-  if(a==='resuggest'){S.days=suggest(S.set);save();ui.tab='week';window.scrollTo(0,0)}
+  if(a==='done'){if(S.done[ui.date])delete S.done[ui.date];else S.done[ui.date]=planFor(ui.date);save()}
+  if(a==='mv'){const i=+b.dataset.i,j=i+ +v;if(j>=0&&j<7){if(perWeek()){const mon=monday(ui.date),q=S.wk[mon]||weekPlan(mon).p;[q[i],q[j]]=[q[j],q[i]];S.wk[mon]=q}else[S.days[i],S.days[j]]=[S.days[j],S.days[i]];save()}}
+  if(a==='wkreset'){delete S.wk[monday(ui.date)];save()}
+  if(a==='wavail'){const mon=monday(ui.date),q=waFor(mon).slice();q[+v]=q[+v]?0:1;S.wa[mon]=q;save()}
+  if(a==='wsuggest'){const mon=monday(ui.date),q=waFor(mon).slice();if(!q.some(Boolean))ui.wErr=1;else{S.wa[mon]=q;S.wk[mon]=suggest({...S.set,avail:q});save()}}
+  if(a==='cant'){const d=ui.date,mon=monday(d),i=dow(d);
+    if(S.set.mode==='dates'){S.off[d]=v;const f=weekPlan(mon).inf[i];if(f.lost)ui.cantMsg='Δεν υπάρχει ελεύθερη διαθέσιμη μέρα στην ίδια εβδομάδα, οπότε η προπόνηση παραλείπεται.'}
+    else{const q=weekPlan(mon).p,w=q[i];q[i]=null;if(v==='move'){const k=nextFree(q,i,mon);if(k>=0){q[k]=w;ui.cantMsg=`Η προπόνηση μετατέθηκε την ${fmt(addD(mon,k))}.`}else ui.cantMsg='Δεν υπάρχει ελεύθερη διαθέσιμη μέρα στην ίδια εβδομάδα, οπότε η προπόνηση παραλείπεται.'}S.wk[mon]=q}
+    save()}
+  if(a==='offmode')ui.offMode=v;
+  if(a==='offdel'){delete S.off[v];save()}
+  if(a==='offtog'){S.off[v]=S.off[v]==='move'?'skip':'move';save()}
+  if(a==='offadd'){const f=(document.getElementById('off-from')||{}).value,to=(document.getElementById('off-to')||{}).value||f;
+    if(!f)ui.offErr='Διάλεξε ημερομηνία.';else if(f<TODAY)ui.offErr='Μπορείς να δηλώσεις μόνο σημερινές ή μελλοντικές μέρες.';else if(to<f)ui.offErr='Η τελική ημερομηνία είναι πριν από την αρχική.';
+    else{const n=Math.round((pd(to)-pd(f))/864e5);if(n>90)ui.offErr='Το διάστημα μπορεί να είναι έως 90 μέρες.';else{for(let k=0;k<=n;k++)S.off[addD(f,k)]=ui.offMode||'move';ui.offF=ui.offT='';save()}}}
+  if(a==='resuggest'){const mon=monday(ui.tab==='week'?ui.date:TODAY);
+    if(S.set.mode==='flex'){const q=waFor(mon).slice();if(q.some(Boolean)){S.wa[mon]=q;S.wk[mon]=suggest({...S.set,avail:q})}}
+    else{S.days=suggest(S.set);if(S.set.mode==='week')delete S.wk[mon]}
+    save();ui.tab='week';ui.date=mon<monday(TODAY)?TODAY:ui.date;window.scrollTo(0,0)}
   if(a==='clrswap'){S.swaps={};save()}
   if(a==='newcycle'){S.start=monday(TODAY);save()}
-  if(a==='set'){const k=b.dataset.k;S.set[k]=['mins','n','bwEvery'].includes(k)?+v:v;if(k==='ag')S.set.age=null;save()}
+  if(a==='set'){const k=b.dataset.k;
+    if(k==='mode'&&v!==S.set.mode){const cur=monday(TODAY),old=weekPlan(cur).p;S.set.mode=v;S.set.modeFrom=cur;
+      if((v==='week'||v==='flex')&&!S.wk[cur])S.wk[cur]=old;if(v==='flex'&&!S.wa[cur])S.wa[cur]=S.set.avail.slice()}
+    else if(k!=='mode'){S.set[k]=['mins','n','bwEvery'].includes(k)?+v:v;if(k==='ag')S.set.age=null}save()}
   if(a==='age'){const inp=document.getElementById(v),n=parseInt(String(inp&&inp.value||'').trim(),10);
     if(n>=10&&n<=100){ui.ageErr=null;S.set.age=n;S.set.ag=null;save()}else ui.ageErr=v}
   if(a==='setlv'){S.set.level=v;S.lvSkip=null;save()}
@@ -2209,7 +2287,8 @@ document.addEventListener('click',ev=>{
 document.addEventListener('change',ev=>{
   const t=ev.target;
   if(t.id==='bkfile'){if(t.files&&t.files[0])bkImport(t.files[0]);t.value='';return}
-  if(t.dataset.day!==undefined){S.days[+t.dataset.day]=t.value||null;save();render();return}
+  if(t.id==='off-from'||t.id==='off-to'){ui[t.id==='off-from'?'offF':'offT']=t.value;return}
+  if(t.dataset.day!==undefined){if(perWeek())setDay(monday(ui.date),+t.dataset.day,t.value||null);else S.days[+t.dataset.day]=t.value||null;save();render();return}
   if(t.dataset.log){const id=t.dataset.log,i=+t.dataset.i,f=+t.dataset.f,d=ui.date;
     const n=parseFloat(String(t.value).replace(',','.'));
     S.logs[id]=S.logs[id]||{};const day=S.logs[id][d]=S.logs[id][d]||[];

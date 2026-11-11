@@ -1412,6 +1412,20 @@ let ui={tab:'day',date:TODAY,cat:'all',swap:null,q:'',nav:[]};
 let dbDoc=null,syncNote='Τα δεδομένα αποθηκεύονται σε αυτή τη συσκευή.',writing=false,dirty=false,timer=null;
 function save(){S.t=Date.now();try{localStorage.setItem('plano-proponisis',JSON.stringify(S))}catch(e){}
   if(dbDoc){dirty=true;clearTimeout(timer);timer=setTimeout(push,1500)}}
+// ---------- Αντίγραφο ασφαλείας (τα δεδομένα μένουν μόνο στη συσκευή) ----------
+const BKEY='plano-proponisis-backup',BK_DAYS=7;
+function bkLast(){try{return +localStorage.getItem(BKEY)||0}catch(e){return 0}}
+function hasData(){return !!(Object.keys(S.logs).length||Object.keys(S.done).length||S.bw.length)}
+function bkDue(){return hasData()&&Date.now()-bkLast()>BK_DAYS*864e5}
+function bkText(){const t=bkLast();if(!t)return'Δεν έχεις πάρει ακόμη αντίγραφο ασφαλείας.';const d=new Date(t);return'Τελευταίο αντίγραφο: '+d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear()+'.'}
+function bkBanner(){return bkDue()?`<div class="card stack" role="status"><p><b>Πάρε αντίγραφο ασφαλείας.</b> Τα δεδομένα σου αποθηκεύονται μόνο σε αυτή τη συσκευή και χάνονται αν καθαριστούν τα δεδομένα του προγράμματος περιήγησης ή αλλάξεις συσκευή.</p><div class="row"><button class="btn pri" data-act="bkexport">Λήψη αντιγράφου</button><button class="btn" data-act="tab" data-v="me">Περισσότερα</button></div></div>`:''}
+function bkExport(){const blob=new Blob([JSON.stringify({app:'plano-proponisis',v:1,exported:Date.now(),data:S})],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='plano-proponisis-'+TODAY+'.json';document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);try{localStorage.setItem(BKEY,String(Date.now()))}catch(e){}}
+function bkImport(file){const r=new FileReader();r.onload=()=>{let o;try{o=JSON.parse(r.result)}catch(e){}
+  if(!o||o.app!=='plano-proponisis'||!o.data||typeof o.data!=='object')return alert('Το αρχείο δεν είναι έγκυρο αντίγραφο ασφαλείας αυτής της εφαρμογής.');
+  if(!confirm('Η εισαγωγή αντικαθιστά όλα τα τρέχοντα δεδομένα σε αυτή τη συσκευή. Συνέχεια;'))return;
+  S=norm(o.data);save();render()};r.readAsText(file)}
 async function push(){if(!dbDoc||writing||!dirty)return;writing=true;dirty=false;
   try{await dbDoc.set({json:JSON.stringify(S),t:S.t})}catch(e){syncNote='Η αποθήκευση στον λογαριασμό απέτυχε. Τα δεδομένα μένουν σε αυτή τη συσκευή.';dbDoc=e&&e.code==='unavailable'?dbDoc:null}
   writing=false;if(dirty)push()}
@@ -1531,7 +1545,7 @@ const TABS=[['day','Σήμερα'],['week','Εβδομάδα'],['month','Μήν�
 function render(){
   document.documentElement.setAttribute('data-g',S.set.sex==='m'?'m':'f');
   document.getElementById('tabs').innerHTML=TABS.map(([k,l])=>`<button role="tab" aria-selected="${ui.tab===k}" data-act="tab" data-v="${k}">${l}</button>`).join('');
-  document.getElementById('root').innerHTML={day:vDay,week:vWeek,month:vMonth,lib:vLib,me:vMe}[ui.tab]();
+  document.getElementById('root').innerHTML=(ui.tab==='day'?bkBanner():'')+{day:vDay,week:vWeek,month:vMonth,lib:vLib,me:vMe}[ui.tab]();
 }
 function vDay(){
   const d=ui.date,wid=S.days[dow(d)],wk=weekIdx(d);
@@ -1625,6 +1639,10 @@ function vMe(){
      ${S.bw.length>1?spark(S.bw.slice(-12).map(x=>({b:x.kg})),'Τάση σωματικού βάρους'):''}</div>
     <div class="field"><span>Υπενθύμιση ενημέρωσης βάρους</span>${opt('bwEvery',{7:'Κάθε εβδομάδα',14:'Κάθε 2 εβδομάδες',30:'Κάθε μήνα'})}</div>
     <p class="small muted">Το βάρος δεν αλλάζει το πρόγραμμα. Χρησιμοποιείται για το συνολικό φορτίο στις έλξεις και τις βυθίσεις και για τη σχετική δύναμη στην πρόοδο.</p></div>
+   <div class="card stack"><div class="field"><span>Αντίγραφο ασφαλείας</span>
+    <p class="small muted">${bkText()} Τα δεδομένα αποθηκεύονται μόνο σε αυτή τη συσκευή. Πάρε αντίγραφο τακτικά, τουλάχιστον μία φορά την εβδομάδα, και φύλαξέ το σε άλλο μέρος.</p>
+    <div class="row"><button class="btn pri" data-act="bkexport">Εξαγωγή</button><button class="btn" data-act="bkimport">Εισαγωγή</button></div>
+    <input type="file" id="bkfile" accept="application/json,.json" hidden></div></div>
    <p class="small muted">${syncNote}</p>
    <p class="small muted">Οι οδηγίες είναι γενικές. Αν νιώσεις οξύ πόνο σε άρθρωση, σταμάτα την άσκηση και ζήτα από γυμναστή να ελέγξει την τεχνική σου.</p>`}
 
@@ -2133,9 +2151,12 @@ document.addEventListener('click',ev=>{
   if(a==='bw'){const inp=document.getElementById(v),n=parseFloat(String(inp&&inp.value||'').replace(',','.'));
     if(n>25&&n<350){ui.bwErr=null;S.bw=S.bw.filter(x=>x.d!==TODAY);S.bw.push({d:TODAY,kg:Math.round(n*10)/10});S.bw.sort((x,y)=>x.d<y.d?-1:1);save()}else ui.bwErr=v}
   if(a==='avail'){S.set.avail[+v]=S.set.avail[+v]?0:1;save()}
+  if(a==='bkexport')bkExport();
+  if(a==='bkimport'){const f=document.getElementById('bkfile');if(f)f.click();return}
   render()});
 document.addEventListener('change',ev=>{
   const t=ev.target;
+  if(t.id==='bkfile'){if(t.files&&t.files[0])bkImport(t.files[0]);t.value='';return}
   if(t.dataset.day!==undefined){S.days[+t.dataset.day]=t.value||null;save();render();return}
   if(t.dataset.log){const id=t.dataset.log,i=+t.dataset.i,f=+t.dataset.f,d=ui.date;
     const n=parseFloat(String(t.value).replace(',','.'));

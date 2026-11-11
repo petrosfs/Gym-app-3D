@@ -1,6 +1,5 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Πλάνο Προπόνησης</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sofia+Sans+Condensed:wght@600;800&display=swap">
 <style>
 /* Layout: one column, sticky 5-tab bar on top, each tab a stack of plain sections; the animated figure is the only loud element */
@@ -1398,7 +1397,7 @@ function suggest(set){
   return best||ord.concat(Array(7).fill(null)).slice(0,7);
 }
 function clash(a,b){const x=W[a].tag,y=W[b].tag;return x===y||x==='F'||y==='F'}
-function fresh(){const set={sex:'f',exp:null,level:'int',goal:'both',mins:75,avail:[1,1,1,1,1,1,0],n:0,bwEvery:14};return{v:1,set,days:suggest(set),swaps:{},start:monday(TODAY),logs:{},done:{},bw:[],t:0}}
+function fresh(){const set={sex:'f',exp:null,level:'int',goal:'both',mins:75,avail:[1,1,1,1,1,1,0],n:0,bwEvery:14,h:null};return{v:1,set,days:suggest(set),swaps:{},start:monday(TODAY),logs:{},done:{},bw:[],t:0}}
 function norm(r){const f=fresh();if(!r||typeof r!=='object')return f;
   const o=Object.assign(f,r);o.set=Object.assign(fresh().set,r.set||{});
   if(!Array.isArray(o.days)||o.days.length!==7)o.days=suggest(o.set);
@@ -1409,9 +1408,7 @@ function norm(r){const f=fresh();if(!r||typeof r!=='object')return f;
 let S=fresh();
 try{const raw=localStorage.getItem('plano-proponisis');if(raw)S=norm(JSON.parse(raw))}catch(e){}
 let ui={tab:'day',date:TODAY,cat:'all',swap:null,q:'',nav:[]};
-let dbDoc=null,syncNote='Τα δεδομένα αποθηκεύονται σε αυτή τη συσκευή.',writing=false,dirty=false,timer=null;
-function save(){S.t=Date.now();try{localStorage.setItem('plano-proponisis',JSON.stringify(S))}catch(e){}
-  if(dbDoc){dirty=true;clearTimeout(timer);timer=setTimeout(push,1500)}}
+function save(){S.t=Date.now();try{localStorage.setItem('plano-proponisis',JSON.stringify(S))}catch(e){}}
 // ---------- Αντίγραφο ασφαλείας (τα δεδομένα μένουν μόνο στη συσκευή) ----------
 const BKEY='plano-proponisis-backup',BK_DAYS=7;
 function bkLast(){try{return +localStorage.getItem(BKEY)||0}catch(e){return 0}}
@@ -1426,21 +1423,6 @@ function bkImport(file){const r=new FileReader();r.onload=()=>{let o;try{o=JSON.
   if(!o||o.app!=='plano-proponisis'||!o.data||typeof o.data!=='object')return alert('Το αρχείο δεν είναι έγκυρο αντίγραφο ασφαλείας αυτής της εφαρμογής.');
   if(!confirm('Η εισαγωγή αντικαθιστά όλα τα τρέχοντα δεδομένα σε αυτή τη συσκευή. Συνέχεια;'))return;
   S=norm(o.data);save();render()};r.readAsText(file)}
-async function push(){if(!dbDoc||writing||!dirty)return;writing=true;dirty=false;
-  try{await dbDoc.set({json:JSON.stringify(S),t:S.t})}catch(e){syncNote='Η αποθήκευση στον λογαριασμό απέτυχε. Τα δεδομένα μένουν σε αυτή τη συσκευή.';dbDoc=e&&e.code==='unavailable'?dbDoc:null}
-  writing=false;if(dirty)push()}
-async function initDb(){try{
-  if(!window.claude||!window.claude.use)return;
-  const[db,user]=await Promise.all([claude.use('db'),claude.use('user')]);if(!db||!user)return;
-  const id=await user.id();if(!id)return;
-  const doc=db.doc('data/users/'+id+'/gym');const snap=await doc.get();
-  dbDoc=doc;syncNote='Τα δεδομένα συγχρονίζονται με τον λογαριασμό σου.';
-  if(snap.exists){const d=snap.data();if(d&&d.json&&(d.t||0)>(S.t||0)){S=norm(JSON.parse(d.json));try{localStorage.setItem('plano-proponisis',JSON.stringify(S))}catch(e){}
-    if(!document.activeElement||document.activeElement.tagName!=='INPUT')render()}
-    else if((S.t||0)>(d&&d.t||0)){dirty=true;push()}}
-  else if(S.t){dirty=true;push()}
-  if(ui.tab==='me')render();
-}catch(e){}}
 
 // ---------- Σχέδιο φιγούρας ----------
 const src=e=>e.like?E[e.like]:e;
@@ -1506,6 +1488,14 @@ const bwLast=()=>S.bw.length?S.bw[S.bw.length-1]:null;
 const bwAt=d=>{let v=null;for(const x of S.bw)if(x.d<=d)v=x.kg;return v||(S.bw[0]?S.bw[0].kg:null)};
 const bwDue=()=>{const l=bwLast();return!l||(pd(TODAY)-pd(l.d))/864e5>=S.set.bwEvery};
 function bwForm(id){const l=bwLast();return `<div class="row"><input id="${id}" class="bwin" inputmode="decimal" placeholder="${l?String(l.kg).replace('.',','):'π.χ. 62,5'}" aria-label="Σωματικό βάρος σε κιλά"><span class="muted">kg</span><button class="btn sm pri" data-act="bw" data-v="${id}">Καταγραφή</button></div>${ui.bwErr===id?'<p class="warn">Γράψε το βάρος σε κιλά, για παράδειγμα 62,5.</p>':''}`}
+const fnum=(x,d=1)=>x.toFixed(d).replace('.',',');
+function htForm(id){const h=S.set.h;return `<div class="row"><input id="${id}" class="bwin" inputmode="numeric" placeholder="${h?h:'π.χ. 168'}" aria-label="Ύψος σε εκατοστά"><span class="muted">cm</span><button class="btn sm pri" data-act="ht" data-v="${id}">Αποθήκευση</button></div>${ui.htErr===id?'<p class="warn">Γράψε το ύψος σε εκατοστά, για παράδειγμα 168.</p>':''}`}
+function bmiBlock(){const h=S.set.h,l=bwLast();
+  if(!h)return'<p class="small muted">Με το ύψος και το τελευταίο σωματικό βάρος υπολογίζεται ο Δείκτης Μάζας Σώματος (ΔΜΣ), μια προσεγγιστική ένδειξη.</p>';
+  if(!l)return`<p class="small muted num">Ύψος: ${h} cm. Κατάγραψε και σωματικό βάρος για να υπολογιστεί ο ΔΜΣ.</p>`;
+  const m=h/100,v=l.kg/(m*m),lab=v<18.5?'κάτω από το συνηθισμένο εύρος':v<25?'εντός του συνηθισμένου εύρους':v<30?'πάνω από το συνηθισμένο εύρος':'αρκετά πάνω από το συνηθισμένο εύρος';
+  return`<p class="small num"><b>ΔΜΣ ${fnum(v)}</b> · ${lab}. Για ύψος ${h} cm, ΔΜΣ 18,5–24,9 αντιστοιχεί περίπου σε ${fnum(18.5*m*m,0)}–${fnum(24.9*m*m,0)} kg.</p>
+   <p class="small muted">Ο ΔΜΣ είναι προσεγγιστικός: ισχύει για ενήλικες, δεν ξεχωρίζει τη μυϊκή μάζα από το λίπος και δεν είναι ιατρική εκτίμηση. Για την υγεία σου μίλα με γιατρό.</p>`}
 function bwCard(){if(ui.date!==TODAY||!bwDue())return'';const l=bwLast();
   return `<div class="card stack" style="gap:8px"><b>${l?'Ώρα για ενημέρωση βάρους':'Πρόσθεσε το βάρος σου'}</b><p class="small muted">${l?`Τελευταία καταγραφή ${fmt(l.d)}: ${String(l.kg).replace('.',',')} kg.`:'Χρησιμοποιείται στις έλξεις, στις βυθίσεις και στη σχετική δύναμη της προόδου.'} Υπενθύμιση κάθε ${S.set.bwEvery} μέρες.</p>${bwForm('bw-day')}</div>`}
 function series(id){const l=S.logs[id]||{};return Object.keys(l).sort().map(d=>{let b=0,top=null;const add=BWX[id]?bwAt(d)||0:0;
@@ -1637,13 +1627,13 @@ function vMe(){
      <p class="small muted num">${(()=>{const l=bwLast();if(!l)return'Δεν έχει καταγραφεί ακόμη.';const f=S.bw[0],d=Math.round((l.kg-f.kg)*10)/10;
        return `Τελευταία: ${String(l.kg).replace('.',',')} kg (${fmt(l.d)}).`+(S.bw.length>1?` Μεταβολή από ${fmt(f.d)}: ${d>0?'+':''}${String(d).replace('.',',')} kg.`:'')})()}</p>
      ${S.bw.length>1?spark(S.bw.slice(-12).map(x=>({b:x.kg})),'Τάση σωματικού βάρους'):''}</div>
+    <div class="field"><span>Ύψος</span>${htForm('ht-me')}${bmiBlock()}</div>
     <div class="field"><span>Υπενθύμιση ενημέρωσης βάρους</span>${opt('bwEvery',{7:'Κάθε εβδομάδα',14:'Κάθε 2 εβδομάδες',30:'Κάθε μήνα'})}</div>
     <p class="small muted">Το βάρος δεν αλλάζει το πρόγραμμα. Χρησιμοποιείται για το συνολικό φορτίο στις έλξεις και τις βυθίσεις και για τη σχετική δύναμη στην πρόοδο.</p></div>
    <div class="card stack"><div class="field"><span>Αντίγραφο ασφαλείας</span>
     <p class="small muted">${bkText()} Τα δεδομένα αποθηκεύονται μόνο σε αυτή τη συσκευή. Πάρε αντίγραφο τακτικά, τουλάχιστον μία φορά την εβδομάδα, και φύλαξέ το σε άλλο μέρος.</p>
     <div class="row"><button class="btn pri" data-act="bkexport">Εξαγωγή</button><button class="btn" data-act="bkimport">Εισαγωγή</button></div>
     <input type="file" id="bkfile" accept="application/json,.json" hidden></div></div>
-   <p class="small muted">${syncNote}</p>
    <p class="small muted">Οι οδηγίες είναι γενικές. Αν νιώσεις οξύ πόνο σε άρθρωση, σταμάτα την άσκηση και ζήτα από γυμναστή να ελέγξει την τεχνική σου.</p>`}
 
 // ---------- Αναλυτικοί μύες και 3D ----------
@@ -2150,6 +2140,8 @@ document.addEventListener('click',ev=>{
   if(a==='skiplv'){S.lvSkip=v;save()}
   if(a==='bw'){const inp=document.getElementById(v),n=parseFloat(String(inp&&inp.value||'').replace(',','.'));
     if(n>25&&n<350){ui.bwErr=null;S.bw=S.bw.filter(x=>x.d!==TODAY);S.bw.push({d:TODAY,kg:Math.round(n*10)/10});S.bw.sort((x,y)=>x.d<y.d?-1:1);save()}else ui.bwErr=v}
+  if(a==='ht'){const inp=document.getElementById(v),n=parseFloat(String(inp&&inp.value||'').replace(',','.'));
+    if(n>=100&&n<=250){ui.htErr=null;S.set.h=Math.round(n);save()}else ui.htErr=v}
   if(a==='avail'){S.set.avail[+v]=S.set.avail[+v]?0:1;save()}
   if(a==='bkexport')bkExport();
   if(a==='bkimport'){const f=document.getElementById('bkfile');if(f)f.click();return}
@@ -2166,7 +2158,7 @@ document.addEventListener('change',ev=>{
     save()}});
 document.addEventListener('keydown',ev=>{if(anim.id===null)return;if(ev.key==='Escape')return closeEx();
   if((ev.key==='ArrowLeft'||ev.key==='ArrowRight')&&!/^(INPUT|SELECT|TEXTAREA)$/.test((ev.target.tagName||''))&&!ev.altKey&&!ev.metaKey&&!ev.ctrlKey){ev.preventDefault();navEx(ev.key==='ArrowLeft'?-1:1)}});
-render();initDb();
+render();
 </script>
 
 </body></html>

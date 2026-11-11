@@ -17,12 +17,12 @@
   --skin:#2b2737; --musc:#5e5674; --musc2:#423c52; --bone:#8d8778; --accent:#f06aa8; --accent-ink:#1c0a13; --accent2:#f0b545; --ok:#4cc38a; --warn:#f0a35a; color-scheme:dark }
 /* Ανδρικό θέμα: μπλε / τιρκουάζ */
 :root[data-g="m"]{--bg:#f2f4f8; --surface:#ffffff; --line:#dde2ea; --skin:#e0e5ec; --musc:#8792a8;
-  --accent:#1f5fc4; --accent-ink:#ffffff; --accent2:#0d8f80}
+  --accent:#1f5fc4; --accent-ink:#ffffff; --accent2:#e8890c}
 @media (prefers-color-scheme: dark){ :root[data-g="m"]:not([data-theme="light"]){
   --bg:#10141b; --surface:#19202a; --line:#2a3342; --skin:#252c38; --musc:#4a556b;
-  --accent:#5b9cf5; --accent-ink:#06142a; --accent2:#2fc7b4 } }
+  --accent:#5b9cf5; --accent-ink:#06142a; --accent2:#f5ac45 } }
 :root[data-g="m"][data-theme="dark"]{--bg:#10141b; --surface:#19202a; --line:#2a3342; --skin:#252c38; --musc:#4a556b;
-  --accent:#5b9cf5; --accent-ink:#06142a; --accent2:#2fc7b4}
+  --accent:#5b9cf5; --accent-ink:#06142a; --accent2:#f5ac45}
 *{box-sizing:border-box}
 .bwin{font:500 15px var(--text);font-variant-numeric:tabular-nums;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);width:110px}
 body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--text);margin:0}
@@ -113,7 +113,7 @@ select{font:500 14px var(--text);padding:8px;border-radius:8px;border:1px solid 
 .maps{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:300px;margin:0 auto;width:100%}
 .maps figure{margin:0;text-align:center}
 .maps figcaption{font-size:12px;color:var(--muted)}
-.bm .base{fill:var(--line)} .bm .m{fill:var(--body)} .bm .m.p{fill:var(--accent)} .bm .m.s{fill:var(--accent2)}
+.sug{margin:8px 0 2px}.bm .base{fill:var(--line)} .bm .m{fill:var(--body)} .bm .m.p{fill:var(--accent)} .bm .m.s{fill:var(--accent2)}
 ol.steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
 ul.err{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
 dl.pos{margin:0;display:flex;flex-direction:column}
@@ -208,7 +208,8 @@ function qInit(root) {
 }
 
 // Πλαίσιο κορμού για κλίση pitch (μοίρες, + = προς τα εμπρός): ux πλάγια, uy κατά μήκος κορμού, uz μπροστινή επιφάνεια
-function trunkFrame(pitch) { const q = new THREE.Quaternion().setFromAxisAngle(QV(1, 0, 0), pitch * QD); return { q, ux: QV(1, 0, 0), uy: QV(0, 1, 0).applyQuaternion(q), uz: QV(0, 0, 1).applyQuaternion(q) }; }
+// roll: πλάγια κλίση όλου του σώματος (+ = η δεξιά πλευρά προς τα κάτω), yaw: στροφή γύρω από τον κατακόρυφο άξονα
+function trunkFrame(pitch, roll = 0, yaw = 0) { const q = new THREE.Quaternion().setFromAxisAngle(QV(0, 1, 0), yaw * QD).multiply(new THREE.Quaternion().setFromAxisAngle(QV(1, 0, 0), pitch * QD)).multiply(new THREE.Quaternion().setFromAxisAngle(QV(0, 0, 1), roll * QD)); return { q, uy: QV(0, 1, 0).applyQuaternion(q), ux: QV(1, 0, 0).applyQuaternion(q), uz: QV(0, 0, 1).applyQuaternion(q) }; }
 
 // Δύο οστά: ρίζα S, στόχος T, μήκη a,b, κατεύθυνση μέσης άρθρωσης pole → θέση μέσης άρθρωσης
 function ik2(S, T, a, b, pole) {
@@ -532,7 +533,7 @@ function qApply(R, S) {
   for (const n in B) B[n].quaternion.copy(R.rest[n]);
   B.pelvis.position.copy(B.pelvis.position); // η θέση τίθεται παρακάτω
   B.root.updateMatrixWorld(true);
-  const T = trunkFrame(S.pitch || 0);
+  const T = trunkFrame(S.pitch || 0, S.roll || 0, S.yaw || 0);
   // Λεκάνη: είτε ρητή θέση, είτε από το κέντρο των ώμων
   let pel;
   if (S.pel) pel = QV(...S.pel);
@@ -540,9 +541,14 @@ function qApply(R, S) {
   qSetWorld(B.pelvis, T.q.clone().multiply(R.rq.pelvis));
   const lp = B.pelvis.parent.worldToLocal(pel.clone()); B.pelvis.position.copy(lp); B.pelvis.updateMatrixWorld(true);
   // Στροφή/κάμψη σπονδυλικής και κεφαλής
-  if (S.spine) for (const n of ['spine_01', 'spine_02', 'spine_03']) qSetWorld(B[n], new THREE.Quaternion().setFromAxisAngle(QV(1, 0, 0), S.spine / 3 * QD).multiply(wquat(B[n])));
-  if (S.neck) qSetWorld(B.neck_01, new THREE.Quaternion().setFromAxisAngle(QV(1, 0, 0), S.neck * QD).multiply(wquat(B.neck_01)));   // + κάμψη, − έκταση αυχένα
-  if (S.nod) qSetWorld(B.Head, new THREE.Quaternion().setFromAxisAngle(QV(1, 0, 0), S.nod * QD).multiply(wquat(B.Head)));
+  // spine: κάμψη (+) / έκταση (−), spineL: πλάγια κάμψη (+ προς τα αριστερά), spineT: στροφή (+ οι ώμοι στρίβουν προς τα αριστερά)
+  if (S.spine || S.spineL || S.spineT) for (const n of ['spine_01', 'spine_02', 'spine_03']) { const w = wquat(B[n]), q = new THREE.Quaternion();
+    if (S.spineT) q.multiply(new THREE.Quaternion().setFromAxisAngle(T.uy, S.spineT / 3 * QD));
+    if (S.spineL) q.multiply(new THREE.Quaternion().setFromAxisAngle(T.uz, -S.spineL / 3 * QD));
+    if (S.spine) q.multiply(new THREE.Quaternion().setFromAxisAngle(T.ux, S.spine / 3 * QD));
+    qSetWorld(B[n], q.multiply(w)); }
+  if (S.neck) qSetWorld(B.neck_01, new THREE.Quaternion().setFromAxisAngle(T.ux, S.neck * QD).multiply(wquat(B.neck_01)));   // + κάμψη, − έκταση αυχένα
+  if (S.nod) qSetWorld(B.Head, new THREE.Quaternion().setFromAxisAngle(T.ux, S.nod * QD).multiply(wquat(B.Head)));
   // Ανύψωση ωμοπλατών (shrug): στροφή των κλειδών γύρω από τον μπροστινό άξονα του κορμού
   // clavR: σύγκλιση (+, ωμοπλάτες πίσω) ή απαγωγή (−, ώμοι μπροστά) των ωμοπλατών, στροφή γύρω από τον κατακόρυφο άξονα του κορμού
   if (S.clav || S.clavR) for (const s of ['l', 'r']) { const sg = s === 'l' ? 1 : -1, c = B['clavicle_' + s];
@@ -965,6 +971,76 @@ function qexDefs(R) {
       const K = [0, .125, .25, .375, .5, .625, .75, .875, 1].map(k => { const S = lerpSpec(A, B, k); let a = S.h.a + 40;
         for (; a > S.h.a; a -= 1) if (hit({ ...S, h: { ...S.h, a } })) break; return [k, { ...S, h: { ...S.h, a: a > S.h.a ? a + 3 : S.h.a } }]; });
       return { eq, props: [box(.12, .5, .12, 0, .25, -1.56)], A: K[0][1], B: K[8][1], at(k) { let i = 0; while (i < 7 && k > K[i + 1][0]) i++; return lerpSpec(K[i][1], K[i + 1][1], Math.max(0, Math.min(1, (k - K[i][0]) / .125))); } }; }),
+    // ---------- Κορμός: ραχιαίοι, κάτω κοιλιακοί, πλάγιοι ----------
+    // Υπερεκτάσεις 45°: τα πόδια σε σταθερή κλίση 45°, το μαξιλάρι κάτω από τα ισχία· ο κορμός κάμπτεται από τα ισχία με ίσια πλάτη
+    hyperext: lazy(() => { const fy = .32, fz = -.55, c = Math.SQRT1_2;
+      const hip = [0, fy + legL * .985 * c, fz + legL * .985 * c];
+      const mk = pitch => { const o = QV(0, hipOff.y, hipOff.z).applyAxisAngle(QV(1, 0, 0), pitch * QD);
+        return { pel: [0, hip[1] - o.y, hip[2] - o.z], pitch, fl: [.11, fy, fz], fr: [-.11, fy, fz], fd: [0, -c, c], fu: [0, c, c], kp: [0, -c, c], nod: pitch > 60 ? -18 : -6,
+          hl: { f: 'trc', v: [-.1, -.13, .15] }, hr: { f: 'trc', v: [-.12, -.08, .19] }, g: { t: 'open' }, ep: [0, -1, .3, 1] }; };
+      return { view: 's', props: [['tbox', .42, .06, .5, 0, hip[1] - .17, hip[2] - .08, -45], box(.36, .04, .3, 0, fy - .09, fz - .03), box(.06, hip[1] - .1, .06, 0, (hip[1] - .1) / 2, fz + .25)],
+        A: mk(128), B: mk(45) }; }),
+    // Bird dog: στα τέσσερα, κορμός οριζόντιος· στο B το αριστερό χέρι τεντώνεται μπροστά και το δεξί πόδι πίσω
+    birddog: lazy(() => { const hipY = kneelY + thL - .01;
+      let p = 80; for (let i = 0; i < 30; i++) { const o = QV(0, hipOff.y, hipOff.z).applyAxisAngle(QV(1, 0, 0), p * QD), pel = [0, hipY - o.y, -o.z], sh = QV(...pel).add(R.shcOff.clone().applyAxisAngle(QV(1, 0, 0), p * QD));
+        p += (sh.y - (armR + .03)) * 40; }
+      const o = QV(0, hipOff.y, hipOff.z).applyAxisAngle(QV(1, 0, 0), p * QD), pel = [0, hipY - o.y, -o.z], sh = QV(...pel).add(R.shcOff.clone().applyAxisAngle(QV(1, 0, 0), p * QD));
+      const knee = s => ({ f: 'w', v: [s * .1, kneelY + .02, -shL + .03], mirror: false });
+      const base = { pel, pitch: p, nod: -6, fl: knee(1), fr: knee(-1), fd: [0, -.12, -1], fu: [0, -1, .12], kp: [0, 0, 1], hl: { f: 'w', v: [shX, .02, sh.z], mirror: false }, hr: { f: 'w', v: [-shX, .02, sh.z], mirror: false }, g: { t: 'flat', p: [0, -1, 0], ah: [0, 0, 1] }, ep: [0, 0, -1] };
+      return { view: 's', A: base, B: { ...base, nod: -10, hl: { f: 'w', v: [shX - .04, sh.y + .02, sh.z + armR * .97], mirror: false }, gl: { t: 'open' }, epl: [0, -1, 0],
+        fr: { f: 'hip', v: [-.02, -.01, -legL * .97] }, kpr: [0, -1, 0], fdr: [0, -.5, -.86], fur: [0, -.86, .5] } }; }),
+    // Superman: μπρούμυτα, χέρια τεντωμένα μπροστά· στο B σηκώνονται χέρια, στήθος και πόδια
+    superman: lazy(() => { const mk = (sp, lift, ah) => ({ pel: [0, 1, 0], pitch: 90, spine: sp, neck: -sp * .4, nod: -4, f: { f: 'hip', v: [.02, lift, -legL * .985] }, kp: [0, -1, 0], fd: [0, -.94, -.34], fu: [0, -.34, .94],
+        h: { f: 'sh', v: [.06, ah, armR * .97] }, g: { t: 'flat', p: [0, -1, 0], ah: [0, 0, 1] }, ep: [0, 1, 0] });
+      qApply(R, mk(0, 0, 0)); const dy = 1 - lowY(/./) + .002, A = mk(0, 0, 0), B = mk(-22, .16, .2); A.pel = [0, dy, 0]; B.pel = [0, dy, 0];
+      return { view: 's', props: [box(1.0, .01, 2.1, 0, .005, 0)], A, B }; }),
+    // Αντίστροφες υπερεκτάσεις: κορμός στον πάγκο, ισχία στην άκρη, τα πόδια ανεβαίνουν από κάτω ως την ευθεία του κορμού
+    revhyper: lazy(() => { const aA = -14, Hh = legL * .985 * Math.cos(aA * QD) + .06;
+      const mk = a => ({ pel: [0, 1, 0], pitch: 90, nod: -10, f: { pol: 'S', f: 'hip', r: legL * .985, a, o: .02 }, kp: [0, 0, -1], footFollow: true, h: { f: 'sh', v: [.18, -.08, .12] }, g: HND, ep: [.5, 0, -1] });
+      const o1 = qApply(R, mk(-90)), sh = Hh - o1.frames.hipl.y, top = lowY(/^(spine_0[123]|clavicle_|pelvis)/) + sh - .004, o = qApply(R, { ...mk(-90), pel: [0, 1 + sh, 0] }), hz = o.frames.hipl.z, sz = o.frames.shc.z;
+      const A = { ...mk(aA), pel: [0, 1 + sh, -hz] }, B = { ...mk(-92), pel: [0, 1 + sh, -hz] };
+      return { view: 's', props: [box(.38, top, sz - hz + .2, 0, top / 2, (sz - hz) / 2 + .06)], A, B }; }),
+    // Αντίστροφοι κοιλιακοί: ύπτια, μηροί κάθετοι· η λεκάνη τυλίγεται προς το στήθος με σταθερούς ώμους
+    revcrunch: lazy(() => { const o0 = qApply(R, { pel: [0, backPel - .005, 0], pitch: -88 }), sc = o0.frames.shc.toArray(); sc[1] = backSh - .005;
+      const mk = (pitch, sp) => ({ shc: sc, pitch, spine: sp, nod: 6, f: { f: 'pelT', v: [.1, hipOff.y - .02 - shL * .97, thL + .03] }, kp: [0, .3, 1, 1], fd: [0, .2, 1], fu: [0, 1, -.2],
+        h: { f: 'w', v: [shX + .1, .02, sc[2] + .45] }, g: { t: 'flat', p: [0, -1, 0], ah: [0, 0, 1] }, ep: [1, .3, 0] });
+      return { view: 's', props: [box(1.0, .01, 1.9, 0, .005, .2)], A: mk(-88, 0), B: mk(-128, 18) }; }),
+    // Dead bug: ύπτια, χέρια κάθετα, γόνατα στις 90°· στο B το αριστερό χέρι πάει πίσω από το κεφάλι και το δεξί πόδι τεντώνεται
+    deadbug: lazy(() => { const pel = [0, backPel - .005, 0], pc = -88;
+      const tab = s => ({ f: 'hip', v: [s * .0, thL, shL * .95], mirror: false });
+      const A = { pel, pitch: pc, nod: 4, fl: tab(1), fr: tab(-1), kp: [0, 1, .2], footFollow: true, h: { f: 'sh', v: [.0, armR * .96, .02] }, g: { t: 'open' }, ep: [0, 0, 1] };
+      return { view: 's', props: [box(1.0, .01, 2.0, 0, .005, .1)], A, B: { ...A, hl: { f: 'sh', v: [.02, .1, -armR * .95], mirror: false }, fr: { f: 'hip', v: [0, .12, legL * .96] }, kpr: [0, 1, 0] } }; }),
+    // Άρσεις ποδιών ξαπλωμένη: ύπτια, τεντωμένα πόδια από λίγο πάνω από το πάτωμα ως την κάθετη
+    lyingleg: lazy(() => { const pel = [0, backPel - .005, 0];
+      const mk = (a, pitch) => ({ pel, pitch, nod: 4, f: { pol: 'S', f: 'hip', r: legL * .985, a, o: .01 }, kp: [0, 1, 0], footFollow: true, h: { f: 'sh', v: [.1, -.06, armR * .9] }, g: { t: 'flat', p: [0, -1, 0], ah: [0, 0, 1] }, ep: [1, 0, 0] });
+      return { view: 's', props: [box(1.0, .01, 2.1, 0, .005, .2)], A: mk(96, -88), B: mk(172, -94) }; }),
+    // Άρσεις γονάτων σε κρέμαση: όπως οι άρσεις ποδιών, με λυγισμένα γόνατα
+    kneeraise: { view: 'f', eq: [], props: [cylX(.018, 1.6, 0, Ybar, .03), post(-.8, .03, Ybar), post(.8, .03, Ybar)],
+      A: { shc: [0, Ybar - armR - .01, -.03], shcFix: true, clav: -4, pitch: 0, spine: 0, h: { f: 'w', v: [pbX, Ybar, .03] }, g: PB, ep: [.7, -1, .15], f: { pol: 'S', f: 'hip', r: legL * .99, a: 4, o: 0 }, kp: [0, .2, 1], footFollow: true },
+      B: { shc: [0, Ybar - armR - .01, -.03], shcFix: true, clav: -4, pitch: -24, spine: 26, h: { f: 'w', v: [pbX, Ybar, .03] }, g: PB, ep: [.7, -1, .15], f: { f: 'hip', v: [.01, .02 - shL * .9, thL * .95 + .05] }, kp: [0, .4, 1] } },
+    // Πλάγιες κάμψεις: αλτήρας στο δεξί χέρι, αριστερό χέρι στο ισχίο· κάμψη προς τον αλτήρα και επιστροφή
+    sidebend: { view: 'f', eq: [{ type: 'db', side: 'r' }],
+      A: { ...feet(.15), kp: [.15, 0, 1], pel: [.02, pelY - .01, 0], pitch: 0, spineL: -24, nod: 0, hr: hang(0, .1), gr: DBN, epr: [.1, 0, -1], hl: { f: 'hip', v: [.06, .1, .0] }, gl: { t: 'flat', p: [-1, 0, 0], ah: [0, -1, 0] }, epl: [1, 0, -.3] },
+      B: { ...feet(.15), kp: [.15, 0, 1], pel: [0, pelY - .01, 0], pitch: 0, spineL: 6, nod: 0, hr: hang(0, .1), gr: DBN, epr: [.1, 0, -1], hl: { f: 'hip', v: [.06, .1, .0] }, gl: { t: 'flat', p: [-1, 0, 0], ah: [0, -1, 0] }, epl: [1, 0, -.3] } },
+    // Κοψίματα ξύλου: η τροχαλία ψηλά αριστερά· η λαβή κατεβαίνει διαγώνια προς το δεξί γόνατο με στροφή του κορμού
+    woodchop: lazy(() => { const to = [.95, 2.05, .25];
+      const mk = (P, tw, yaw, pitch, py) => ({ ...feet(.2), toeOut: 10, kp: [.2, 0, 1], pel: [0, pelY - py, -.02], yaw, pitch, spineT: tw, nod: 0,
+        hl: { f: 'w', v: [P[0], P[1] + .045, P[2]], mirror: false }, hr: { f: 'w', v: [P[0], P[1] - .045, P[2]], mirror: false }, g: { t: 'free', k: [0, 1, 0], r: .016 }, ep: [0, -1, -.5] });
+      return { view: 'f', eq: [{ type: 'pallof', to }], props: [box(.12, 2.2, .12, 1.0, 1.1, .25)], A: mk([.5, 1.62, .3], 34, 10, 0, .01), B: mk([-.3, .72, .38], -30, -12, 22, .07) }; }),
+    // Πλάγια σανίδα στον δεξί πήχη: όλο το σώμα σε πλάγια κλίση· στο A η λεκάνη κοντά στο πάτωμα, στο B σε ευθεία γραμμή
+    sideplank: lazy(() => { const fa = R.len.far, ua = R.len.uar;
+      const mk = (roll, sl) => ({ pel: [0, 1, 0], pitch: 0, roll, spineL: sl, nod: 0, fl: { f: 'pelT', v: [.045, hipOff.y - legL * .985, .03] }, fr: { f: 'pelT', v: [.045, hipOff.y - legL * .985, -.03] }, kp: [0, 0, 1], fd: [0, 0, 1], fu: [0, 1, 0],
+        hl: { f: 'hip', v: [-.02, .08, .02], mirror: false }, gl: { t: 'flat', p: [0, -1, 0], ah: [0, 0, 1] }, epl: [0, 1, -1] });
+      // θέση: ο δεξιός ώμος πάνω από τον αγκώνα (βραχίονας κάθετος), ο αστράγαλος του δεξιού ποδιού στο πάτωμα
+      const fit = (roll, sl) => { let S = mk(roll, sl), o = qApply(R, S), sh = o.frames.shr; const d = QV(0, ua + .055, 0).sub(sh); S.pel = QV(...S.pel).add(d).toArray(); o = qApply(R, S);
+        S.hr = { f: 'w', v: [o.frames.shr.x, .025, o.frames.shr.z + fa], mirror: false }; S.gr = { t: 'flat', p: [0, -1, 0], ah: [0, 0, 1] }; S.epr = [0, -1, -.2]; return S; };
+      let roll = 70; for (let i = 0; i < 25; i++) { const S = fit(roll, 0); qApply(R, S); const ay = wpos(R.B.foot_r).y; roll -= (ay - .06) * 60; }
+      return { view: 'f', A: fit(roll + 9, -14), B: fit(roll, 0) }; }),
+    // Ποδήλατο: ύπτια, ωμοπλάτες ψηλά, ο αγκώνας πηγαίνει προς το αντίθετο γόνατο με στροφή του κορμού
+    bicycle: lazy(() => { const pel = [0, backPel - .005, 0], pc = -88;
+      const tuck = { f: 'hip', v: [0, thL * .75 + .05, thL * .55 + shL * .7] }, ext = { f: 'hip', v: [0, .2, legL * .95] };
+      const mk = (tw, L, Rr) => ({ pel, pitch: pc, spine: 34, spineT: tw, neck: 10, nod: 8, fl: L, fr: Rr, kpl: [0, 1, .2], kpr: [0, 1, .2], footFollow: true, h: { f: 'hd', v: [.145, .1, .0] }, g: { t: 'open' }, ep: [1, .2, 0] });
+      return { view: 's', props: [box(1.0, .01, 2.0, 0, .005, .2)], A: mk(-34, ext, tuck), B: mk(34, tuck, ext) }; }),
   };
   for (const k of Object.keys(X)) if (X[k] && X[k].__lazy) { const f = X[k].__lazy;
     Object.defineProperty(X, k, { configurable: true, enumerable: true, get() { const v = f(); Object.defineProperty(X, k, { value: v, enumerable: true, writable: true, configurable: true }); return v; } }); }
@@ -1100,7 +1176,7 @@ function qEquip(R, ex, E, o) {
 </script>
 <script>
 // ---------- Δεδομένα ----------
-const M={chest:'Στήθος',delt:'Δελτοειδείς (πρόσθιος/μέσος)',rdelt:'Οπίσθιος δελτοειδής',bi:'Δικέφαλοι',tri:'Τρικέφαλοι',fore:'Πήχεις',abs:'Κοιλιακοί',lats:'Πλατύς ραχιαίος',traps:'Τραπεζοειδής / ρομβοειδείς',low:'Οσφυϊκοί',glute:'Γλουτοί',quad:'Τετρακέφαλοι',ham:'Οπίσθιοι μηριαίοι',calf:'Γάμπες',add:'Προσαγωγοί'};
+const M={chest:'Στήθος',delt:'Δελτοειδείς (πρόσθιος/μέσος)',rdelt:'Οπίσθιος δελτοειδής',bi:'Δικέφαλοι',tri:'Τρικέφαλοι',fore:'Πήχεις',abs:'Κοιλιακοί',obl:'Πλάγιοι κοιλιακοί',lats:'Πλατύς ραχιαίος',traps:'Τραπεζοειδής / ρομβοειδείς',low:'Ραχιαίοι (οσφυϊκή μοίρα)',glute:'Γλουτοί',quad:'Τετρακέφαλοι',ham:'Οπίσθιοι μηριαίοι',calf:'Γάμπες',add:'Προσαγωγοί'};
 const CATS={all:'Όλες',back:'Πλάτη',sh:'Ώμοι',chest:'Στήθος',arms:'Χέρια',legs:'Πόδια / Γλουτοί',core:'Κορμός'};
 // στάσεις: [λαιμός x,y, λεκάνη x,y, αγκώνας x,y, χέρι x,y, γόνατο x,y, πόδι x,y, (2ο γόνατο x,y, 2ο πόδι x,y)]  v: s=πλάγια, f=μπροστινή όψη
 const E={
@@ -1349,6 +1425,54 @@ pallof:{n:'Pallof press',en:'Pallof press',cat:'core',p:['abs'],s:['glute'],v:'f
  a:[100,66,100,114,118,88,102,80,108,148,109,182],b:[100,66,100,114,108.5,70,102,74,108,148,109,182],
  cue:['Στάσου πλάγια στην τροχαλία στο ύψος του στήθους, λαβή στο στέρνο με τα δύο χέρια.','Σπρώξε τη λαβή ευθεία μπροστά χωρίς να στρίψει ο κορμός.','Κράτα ένα δευτερόλεπτο και φέρε τη λαβή πίσω στο στέρνο.'],
  err:['Ο κορμός στρίβει προς την τροχαλία.','Κλίση της λεκάνης ή χαλαροί κοιλιακοί.']},
+hyperext:{n:'Υπερεκτάσεις σε πάγκο 45°',en:'45° back extension',cat:'core',p:['low'],s:['glute','ham'],v:'s',nf:1,
+ a:[118.3,157.3,110,110,109.3,146.5,120.1,155.5,86.0,134.0,61.9,158.1],b:[143.9,76.1,110,110,140.3,89.6,141.5,75.6,86.0,134.0,61.9,158.1],st:[[30,150,64,184],[96,96,120,120]],
+ cue:['Ρύθμισε το μαξιλάρι λίγο κάτω από τα ισχία και στερέωσε τις φτέρνες κάτω από τα στηρίγματα, χέρια σταυρωμένα στο στήθος.','Κατέβα αργά λυγίζοντας από τα ισχία, με την πλάτη ίσια, όσο επιτρέπουν οι οπίσθιοι μηριαίοι.','Ανέβα σφίγγοντας γλουτούς και μέση μέχρι το σώμα να γίνει ευθεία γραμμή με τα πόδια.'],
+ err:['Υπερέκταση της μέσης πάνω από την ευθεία γραμμή.','Γρήγορη, απότομη κίνηση με φόρα.']},
+birddog:{n:'Bird dog',en:'Bird dog',cat:'core',p:['low'],s:['glute','abs','delt'],v:'s',nf:1,
+ a:[126,124,78,122,126.0,148.0,126.0,172.0,78.0,156.0,44.0,156.0,78.0,156.0,44.0,156.0],b:[126,124,78,122,149.9,121.9,173.8,119.8,44.0,123.2,10.0,123.2,78.0,156.0,44.0,156.0],
+ cue:['Στα τέσσερα: παλάμες κάτω από τους ώμους, γόνατα κάτω από τα ισχία, μέση ουδέτερη.','Τέντωσε αργά το ένα χέρι μπροστά και το αντίθετο πόδι πίσω, ως την ευθεία του κορμού, χωρίς να στρίψει η λεκάνη.','Κράτα 2–3 δευτερόλεπτα, γύρισε ελεγχόμενα και άλλαξε πλευρά.'],
+ err:['Η λεκάνη στρίβει ή γέρνει προς το πόδι που σηκώνεται.','Το πόδι ανεβαίνει πιο ψηλά από τον κορμό και η μέση κάνει καμάρα.']},
+superman:{n:'Superman',en:'Superman',cat:'core',p:['low'],s:['glute','ham','traps'],v:'s',nf:1,
+ a:[138.0,178.0,90,178,162.0,178.0,186.0,178.0,56.0,178.0,22.0,178.0],b:[137.5,171.0,90,178,160.5,164.1,183.4,157.1,56.3,173.9,22.7,168.1],
+ cue:['Ξάπλωσε μπρούμυτα με τα χέρια τεντωμένα μπροστά και τα πόδια ενωμένα.','Σήκωσε μαζί χέρια, στήθος και πόδια λίγα εκατοστά από το πάτωμα, σφίγγοντας γλουτούς.','Κράτα 2 δευτερόλεπτα και κατέβα αργά.'],
+ err:['Το κεφάλι γέρνει πίσω και ο αυχένας τσακίζει.','Πολύ μεγάλο ύψος με απότομη καμάρα στη μέση.']},
+revhyper:{n:'Αντίστροφες υπερεκτάσεις σε πάγκο',en:'Reverse hyperextension (bench)',cat:'core',p:['low','glute'],s:['ham'],v:'s',nf:1,
+ a:[128,146,80,146,123.8,169.6,135.8,190.4,65.6,176.8,51.3,207.6],b:[128,146,80,146,123.8,169.6,135.8,190.4,46.0,147.2,12.0,148.4],st:[[60,150,160,150],[70,150,70,184],[150,150,150,184]],
+ cue:['Ξάπλωσε μπρούμυτα σε ψηλό πάγκο με τα ισχία στην άκρη, κράτα τον πάγκο, πόδια κρεμασμένα.','Σήκωσε τα πόδια μαζί, σχεδόν τεντωμένα, ως την ευθεία του κορμού, σφίγγοντας γλουτούς.','Κατέβασέ τα αργά χωρίς να αιωρούνται.'],
+ err:['Τα πόδια ανεβαίνουν πάνω από την ευθεία και η μέση κάνει καμάρα.','Αιώρηση και φόρα στο κάτω σημείο.']},
+revcrunch:{n:'Αντίστροφοι κοιλιακοί (reverse crunch)',en:'Reverse crunch',cat:'core',p:['abs'],s:['quad'],v:'s',nf:1,
+ a:[72,176,120,176.0,95.6,180.2,119.6,180.2,120.0,142.0,154.0,142.0],b:[72,176,120,164.0,95.6,180.2,119.6,180.2,98.1,138.0,124.2,116.1],
+ cue:['Ανάσκελα, χέρια στο πάτωμα δίπλα στο σώμα, μηροί κάθετοι και γόνατα λυγισμένα στις 90°.','Τύλιξε τη λεκάνη προς το στήθος σηκώνοντας τα ισχία λίγο από το πάτωμα, με εκπνοή.','Κατέβασε αργά τη λεκάνη ως την αρχική θέση.'],
+ err:['Φόρα με τα πόδια αντί για τύλιγμα της λεκάνης.','Σπρώξιμο με τα χέρια στο πάτωμα.']},
+deadbug:{n:'Dead bug',en:'Dead bug',cat:'core',p:['abs'],s:['quad'],v:'s',nf:1,
+ a:[72,176,120,176,72.0,152.0,72.0,128.0,120.0,142.0,154.0,142.0,120.0,142.0,154.0,142.0],b:[72,176,120,176,48.0,176.0,24.0,176.0,120.0,142.0,154.0,142.0,153.9,173.0,187.8,171.3],
+ cue:['Ανάσκελα, χέρια κάθετα προς το ταβάνι, μηροί κάθετοι και γόνατα στις 90°, μέση κολλημένη στο πάτωμα.','Κατέβασε αργά το ένα χέρι πίσω από το κεφάλι και τέντωσε το αντίθετο πόδι μπροστά, λίγο πάνω από το πάτωμα.','Γύρισε στην αρχική θέση και άλλαξε πλευρά, χωρίς να ξεκολλήσει η μέση.'],
+ err:['Η μέση ξεκολλά από το πάτωμα και κάνει καμάρα.','Βιαστική κίνηση χωρίς έλεγχο.']},
+lyingleg:{n:'Άρσεις ποδιών ξαπλωμένη',en:'Lying leg raise',cat:'core',p:['abs'],s:['quad'],v:'s',nf:1,
+ a:[72,176,120,176,95.9,178.1,119.9,178.1,153.7,171.3,187.3,166.5],b:[72,176,120,176,95.9,178.1,119.9,178.1,123.0,142.1,125.9,108.3],
+ cue:['Ανάσκελα, χέρια δίπλα στο σώμα ή κάτω από τους γλουτούς, πόδια τεντωμένα και ενωμένα.','Σήκωσε τα πόδια μέχρι να γίνουν κάθετα, κρατώντας τη μέση στο πάτωμα.','Κατέβασέ τα αργά ως λίγο πάνω από το πάτωμα.'],
+ err:['Η μέση ξεκολλά και κάνει καμάρα στο κάτω σημείο.','Τα πόδια πέφτουν απότομα.']},
+kneeraise:{n:'Άρσεις γονάτων σε κρέμαση',en:'Hanging knee raise',cat:'core',p:['abs'],s:['quad','fore'],v:'s',nf:1,
+ a:[100,80,100,128,106.2,56.8,106.2,32.8,100.0,162.0,100.0,196.0],b:[100,80,102,126,106.2,56.8,106.2,32.8,135.5,131.9,135.5,165.9],st:[[60,30,140,30]],
+ cue:['Κρεμάσου από το μονόζυγο με τεντωμένα χέρια και ενεργούς ώμους.','Φέρε τα γόνατα προς το στήθος τυλίγοντας τη λεκάνη, χωρίς αιώρηση.','Κατέβασε αργά τα πόδια ως την πλήρη έκταση.'],
+ err:['Αιώρηση του σώματος για φόρα.','Τα γόνατα ανεβαίνουν μόνο ως τη μέση χωρίς τύλιγμα της λεκάνης.']},
+sidebend:{n:'Πλάγιες κάμψεις με αλτήρα',en:'Dumbbell side bend',cat:'core',p:['obl'],s:['abs','low'],v:'f',
+ a:[111.6,67.4,100,114,127.6,91.4,128.6,115.4,108,148,109,182],b:[96.7,66.1,100,114,112.7,90.1,113.7,114.1,108,148,109,182],oba:[83.6,87.4,88,108],obb:[68.7,86.1,88,108],
+ cue:['Όρθια, αλτήρας στο ένα χέρι δίπλα στον μηρό, το άλλο χέρι στο ισχίο.','Γείρε αργά προς την πλευρά του αλτήρα, χωρίς να στρίψει ή να σκύψει ο κορμός.','Επέστρεψε στην όρθια θέση με τους πλάγιους της αντίθετης πλευράς· κάνε όλες τις επαναλήψεις και άλλαξε χέρι.'],
+ err:['Ο κορμός σκύβει μπροστά ή στρίβει.','Πολύ βαρύς αλτήρας με απότομη κίνηση.']},
+woodchop:{n:'Κοψίματα ξύλου σε τροχαλία',en:'Cable woodchop (high to low)',cat:'core',p:['obl'],s:['abs','delt','glute'],v:'f',eq:'cable1F',an:[176,30],
+ a:[104,66,100,114,128,56,150,48,110,148,112,182],b:[96,66,100,114,104,98,64,128,110,148,112,182],oba:[118,52,150,48],obb:[80,96,64,128],
+ cue:['Στάσου πλάγια στην ψηλή τροχαλία, πόδια στο άνοιγμα των ώμων, λαβή με τα δύο χέρια πάνω από τον ώμο.','Τράβα τη λαβή διαγώνια προς το αντίθετο γόνατο, στρίβοντας τον κορμό με τεντωμένα χέρια· το πίσω πόδι περιστρέφεται.','Επέστρεψε αργά στην αρχική θέση· κάνε όλες τις επαναλήψεις και άλλαξε πλευρά.'],
+ err:['Τράβηγμα με τα χέρια αντί για στροφή του κορμού.','Στρογγύλεμα της μέσης στο κάτω σημείο.']},
+sideplank:{n:'Πλάγια σανίδα',en:'Side plank',cat:'core',p:['obl'],s:['abs','glute','delt'],v:'s',nf:1,
+ a:[128.9,138.2,89.5,165.6,128.9,162.2,152.9,163.2,57.7,170.8,26,176],b:[134.3,134.4,89.5,151.6,134.3,158.4,158.3,159.4,57.7,163.8,26,176],
+ cue:['Ξάπλωσε στο πλάι, αγκώνας κάτω από τον ώμο, πήχης μπροστά, πόδια τεντωμένα το ένα πάνω στο άλλο.','Σήκωσε τη λεκάνη ώστε το σώμα να γίνει ευθεία γραμμή από τα πόδια ως το κεφάλι, και κράτα.','Κράτα με ήρεμη αναπνοή, κατέβα ελεγχόμενα και άλλαξε πλευρά.'],
+ err:['Η λεκάνη πέφτει ή πηγαίνει πίσω.','Ο ώμος ανεβαίνει προς το αυτί.']},
+bicycle:{n:'Ποδήλατο κοιλιακών',en:'Bicycle crunch',cat:'core',p:['obl'],s:['abs','quad'],v:'s',nf:1,
+ a:[74.9,159.6,120,176,81.9,147.5,68.7,142.7,103.0,146.6,136.5,140.7,153.3,168.9,186.7,163.0],b:[74.9,159.6,120,176,81.9,147.5,68.7,142.7,153.3,168.9,186.7,163.0,103.0,146.6,136.5,140.7],
+ cue:['Ανάσκελα, δάχτυλα ελαφρά στους κροτάφους, ωμοπλάτες λίγο πάνω από το πάτωμα, πόδια στον αέρα.','Φέρε τον αγκώνα προς το αντίθετο γόνατο στρίβοντας τον κορμό, ενώ το άλλο πόδι τεντώνεται.','Άλλαξε πλευρά αργά και ελεγχόμενα, με τη μέση στο πάτωμα.'],
+ err:['Τράβηγμα του κεφαλιού με τα χέρια.','Βιαστικό «πεντάλι» χωρίς στροφή του κορμού.']},
 };
 const W={
 LA:{n:'Πόδια Α',sub:'Έμφαση τετρακέφαλοι',short:'Πόδια Α',tag:'L',it:[['squat',4,'6-8'],['legpress',3,'10-12'],['bulgarian',3,'8-10'],['legext',3,'12-15'],['legcurl',3,'10-12'],['calf',4,'10-15']]},
@@ -1514,7 +1638,7 @@ function fig(e,t,label){
     if(eq==='cable1F'&&an)o+=L(an[0],an[1],wx,wy,'cb');
     o+=L(nx-15,ny,nx+15,ny,'bd')+L(nx,ny,hx,hy,'bd')+L(hx-8,hy,hx+8,hy,'bd');
     o+=L(hx+8,hy,kx,ky,'bd')+L(kx,ky,fx,fy,'bd')+L(hx-8,hy,mx(kx),ky,'bd')+L(mx(kx),ky,mx(fx),fy,'bd');
-    const ob=s.ob||[mx(ex),ey,mx(wx),wy];
+    const ob=s.oba?L2(s.oba,s.obb,t):s.ob||[mx(ex),ey,mx(wx),wy];
     o+=L(nx+15,ny,ex,ey,'bd')+L(ex,ey,wx,wy,'bd')+L(nx-15,ny,ob[0],ob[1],'bd')+L(ob[0],ob[1],ob[2],ob[3],'bd');
     if(eq==='barF')o+=L(mx(wx)-14,wy,wx+14,wy,'eqb');
     if(eq==='dbF')o+=L(wx-7,wy,wx+7,wy,'eqb')+L(mx(wx)-7,wy,mx(wx)+7,wy,'eqb');
@@ -1523,7 +1647,7 @@ function fig(e,t,label){
   o+=`<circle cx="${r(cx)}" cy="${r(cy)}" r="9" class="hd"/>`;
   return `<svg class="fig" viewBox="0 0 200 200" ${label?`role="img" aria-label="${label}"`:'aria-hidden="true"'}>${o}</svg>`;
 }
-const FR={delt:[[30,43,7,6]],chest:[[41,53,9,7]],bi:[[25,63,4.5,10]],fore:[[21,89,4,11]],abs:[[50,77,8,15]],quad:[[40,125,8,20]],add:[[48.5,113,2.5,9]],shin:[[41,167,5,13]]};
+const FR={delt:[[30,43,7,6]],chest:[[41,53,9,7]],bi:[[25,63,4.5,10]],fore:[[21,89,4,11]],abs:[[50,77,8,15]],obl:[[38.5,80,3.5,11]],quad:[[40,125,8,20]],add:[[48.5,113,2.5,9]],shin:[[41,167,5,13]]};
 const BK={traps:[[50,41,13,7]],rdelt:[[30,44,7,6]],lats:[[40,65,8,14]],low:[[50,87,7,8]],tri:[[25,63,4.5,10]],fore:[[21,89,4,11]],glute:[[42,103,9,9]],ham:[[40,131,8,17]],calf:[[41,167,6,13]]};
 function bmap(R,e){let o='<circle cx="50" cy="18" r="10" class="base"/><rect x="33" y="34" width="34" height="62" rx="10" class="base"/>';
   for(const k in R)for(const[x,y,rx,ry]of R[k]){const c=e.p.includes(k)?' p':e.s.includes(k)?' s':'';
@@ -1543,6 +1667,32 @@ function build(wid,wk){
     if(j>=0)it[j].s--;else if(it.length>4)it.pop();else break;cut=true}
   return{it,est:est(),cut}}
 const alts=id=>Object.keys(E).filter(k=>k!==id&&E[k].p[0]===E[id].p[0]);
+// Πρόταση κιλών/επαναλήψεων: από την προηγούμενη καταγραφή (διπλή πρόοδος) ή, χωρίς ιστορικό, πολύ συντηρητικά από το προφίλ
+const HOLD=new Set(['plank','sideplank']);
+const BWO=new Set(['plank','crunch','legraise','birddog','superman','revcrunch','deadbug','lyingleg','kneeraise','sideplank','bicycle']);
+const rng=r=>{const m=String(r).match(/(\d+)(?:-(\d+))?/);return m?[+m[1],+(m[2]||m[1])]:[8,12]};
+const rdn=(v,st)=>Math.floor(v/st+1e-9)*st;
+function sug(x,d,wk){const id=x.id,e=E[id],[lo,hi]=rng(x.reps),pl=prevLog(id,d),bw=BWO.has(id)||e.bw;
+  const step=/bar/.test(e.eq||'')?2.5:/db/.test(e.eq||'')?1:2.5;
+  const sets=(pl||[]).filter(q=>q&&q[1]>0);
+  if(sets.length){const ld=Object.keys(S.logs[id]).filter(k=>k<d).sort().pop(),gap=Math.round((pd(d)-pd(ld))/864e5);
+    const w=Math.max(...sets.map(q=>+q[0]||0)),ws=sets.filter(q=>(+q[0]||0)===w),top=ws.length>=Math.min(x.s,sets.length)&&ws.every(q=>q[1]>=hi),low=ws.some(q=>q[1]<lo);
+    const avg=Math.round(ws.reduce((a,q)=>a+q[1],0)/ws.length);
+    let kg=w,rp=`${lo}–${hi}`,why='';
+    if(gap>21){kg=rdn(w*.9,step);rp=`${lo}`;why=`Πέρασαν ${gap} μέρες από την τελευταία φορά, οπότε ξεκίνα περίπου 10% πιο ελαφριά.`}
+    else if(S.set.goal==='mnt'||wk===3){why=wk===3?'Εβδομάδα αποφόρτισης: ίδια κιλά, μακριά από την αστοχία.':'Συντήρηση: ίδια κιλά με την προηγούμενη φορά.'}
+    else if(top&&!bw&&w>0){kg=w+step;rp=`${lo}`;why=`Την προηγούμενη φορά έπιασες το πάνω όριο (${hi}) σε όλα τα σετ, οπότε ανέβα λίγο βάρος και ξεκίνα από ${lo} επαναλήψεις.`}
+    else if(top){rp=`${hi}+`;why=`Έπιασες το πάνω όριο σε όλα τα σετ· δοκίμασε 1–2 επαναλήψεις παραπάνω${bw?'':' ή λίγο πρόσθετο βάρος'}.`}
+    else if(low){rp=`${lo}`;why=`Κάποια σετ έμειναν κάτω από ${lo} επαναλήψεις, οπότε κράτα το ίδιο βάρος και στόχευσε πρώτα σε ${lo}.`}
+    else{rp=`${Math.min(hi,avg+1)}`;why='Ίδιο βάρος, 1 επανάληψη παραπάνω ανά σετ σε σχέση με την προηγούμενη φορά.'}
+    return{kg:bw?null:kg,rp,why}}
+  if(BWX[id])return{kg:null,rp:`${lo}–${hi}`,why:'Πρώτη φορά: χωρίς πρόσθετο βάρος, όσες καθαρές επαναλήψεις βγαίνουν μέσα στο εύρος· αν δεν βγαίνουν ακόμη, χρησιμοποίησε λάστιχο ή μηχάνημα υποβοήθησης.'};
+  if(HOLD.has(id))return{kg:null,rp:'20–30',why:'Πρώτη φορά: κράτα όσο μένει σωστή η θέση· στο πεδίο επαναλήψεων γράψε τα δευτερόλεπτα.'};
+  if(bw)return{kg:null,rp:`${lo}–${hi}`,why:'Πρώτη φορά: κάνε όσες επαναλήψεις βγαίνουν καθαρά, με τεχνική, χωρίς να φτάσεις στην αστοχία.'};
+  const sx=S.set.sex==='m'?'m':'f',b=bwLast(),li=Math.max(0,LK.indexOf(S.set.level));
+  if(STD[sx][id]&&b){const max=STD[sx][id][li]*b.kg;let kg=rdn(max*.5*(ageInfo().senior?.9:1),2.5);if(kg<20)kg=20;
+    return{kg,rp:`${lo}`,why:`Πρώτη φορά, πολύ συντηρητικά: περίπου το 50% του μέγιστου που αντιστοιχεί στο επίπεδο «${LVN[S.set.level]}» για σωματικό βάρος ${String(b.kg).replace('.',',')} kg (η άδεια μπάρα είναι συνήθως 20 kg). Αν βγαίνει πολύ εύκολα, ανέβα 2,5–5 kg στο επόμενο σετ.`}}
+  return{kg:null,rp:`${lo}`,why:`Πρώτη φορά: βάρος που θα σήκωνες άνετα ${hi+4} φορές. Από την επόμενη φορά η πρόταση βγαίνει από τις καταγραφές σου.`}}
 function prevLog(id,date){const l=S.logs[id];if(!l)return null;const ds=Object.keys(l).filter(d=>d<date).sort();return ds.length?l[ds[ds.length-1]]:null}
 const e1=(w,r)=>w*(1+r/30);
 const BWX={pullup:1,dips:1};
@@ -1671,6 +1821,7 @@ function vDay(){
      <div><h3>${e.n}</h3><p class="small muted num">${x.s} × ${x.reps} · διάλειμμα ${x.rest>=120?(x.rest/60)+'′':x.rest+'″'} · ${M[e.p[0]]}${BWX[x.id]?' · κιλά = πρόσθετο βάρος (0 χωρίς βάρος)':''}</p>
      <div class="row" style="margin-top:8px"><button class="btn sm" data-act="open" data-v="${x.id}">Τεχνική</button><button class="btn sm" data-act="swap" data-v="${key}" aria-expanded="${ui.swap===key}">Αλλαγή άσκησης</button></div></div></div>
      ${ui.swap===key?`<div class="alts">${alts(x.id).map(a=>`<button class="btn sm" data-act="pick" data-w="${wid}" data-i="${x.i}" data-v="${a}">${E[a].n}</button>`).join('')||'<span class="small muted">Δεν υπάρχει εναλλακτική για τον ίδιο μυ.</span>'}${(S.swaps[wid]||{})[x.i]?`<button class="btn sm" data-act="pick" data-w="${wid}" data-i="${x.i}" data-v="">Επαναφορά αρχικής</button>`:''}</div>`:''}
+     ${(()=>{const g=sug(x,d,wk);return `<p class="small sug"><b>Πρόταση:</b> <span class="num">${g.kg!=null?(BWX[x.id]?'+':'')+String(g.kg).replace('.',',')+' kg × ':''}${g.rp}${HOLD.has(x.id)?'″':' επαν.'}</span> <span class="muted">${g.why}</span></p>`})()}
      <div class="sets">${rows}</div></section>`});
   h+=coolCard(W[wid].tag,d);
   h+=`<button class="btn pri" data-act="done">${S.done[d]?'Αναίρεση ολοκλήρωσης':'Ολοκλήρωση προπόνησης'}</button>`;
@@ -1726,7 +1877,7 @@ function vMonth(){
     h+=`<div class="prog"><div style="min-width:0"><b>${E[id].n}</b><p class="small muted num">Καλύτερο σετ τελευταίας φοράς: ${BWX[id]?'σώμα +'+l.top[0]:l.top[0]} kg × ${l.top[1]} · εκτιμώμενο μέγιστο ${Math.round(l.b)} kg${bwAt(l.d)?' · '+(l.b/bwAt(l.d)).toFixed(2).replace('.',',')+'× σωματικό βάρος':''}</p></div>${spark(s.slice(-12))}</div>`});h+='</div>'}
   return h}
 // Αναζήτηση: χωρίς τόνους και πεζά/κεφαλαία, σε όνομα, μυς, κατηγορία και αγγλικές ονομασίες· όλες οι λέξεις πρέπει να ταιριάζουν
-const AKA={pullup:'pull-up pull up',latpull:'lat pull down',bbrow:'barbell row bent over row',tbar:'t bar',cablerow:'seated cable row',dbrow:'dumbbell row one arm',sapd:'straight arm pulldown',ohp:'dumbbell shoulder press',latraise:'lateral raise side raise',revpec:'rear delt machine',ohext:'overhead triceps extension',cgbench:'close grip bench press',dips:'dip',pushdown:'triceps pushdown rope',bench:'bench press',incline:'incline dumbbell press',fly:'cable fly crossover',bbcurl:'barbell curl biceps',hammer:'hammer curl',inccurl:'incline dumbbell curl',squat:'back squat',legpress:'leg press',bulgarian:'bulgarian split squat',lunge:'lunges',legext:'leg extension',legcurl:'seated leg curl hamstring',calf:'standing calf raise',rdl:'romanian deadlift rdl',hipthrust:'hip thrust glute bridge',abduction:'hip abduction',legraise:'hanging leg raise',mpress:'military press overhead press ohp',arnold:'arnold press',frontraise:'front raise',cablelat:'cable lateral raise',rdfly:'rear delt fly reverse fly',shrug:'shrugs',chinup:'chin up',deadlift:'deadlift',pushup:'push up',dbbench:'dumbbell bench press',pecdeck:'pec deck machine fly',skull:'skull crusher lying triceps extension',cablecurl:'cable curl',kickback:'triceps kickback',preacher:'preacher curl scott',goblet:'goblet squat',stepup:'step up',adduction:'hip adduction',glutekick:'cable glute kickback',plank:'plank',crunch:'crunch',cablecrunch:'cable crunch kneeling',pallof:'pallof press anti rotation',sumosq:'sumo squat plie',bridge:'glute bridge',sldl:'single leg rdl romanian deadlift',lyingcurl:'lying leg curl hamstring',seatcalf:'seated calf raise',goodmorning:'good morning',pullthrough:'cable pull through'};
+const AKA={pullup:'pull-up pull up',latpull:'lat pull down',bbrow:'barbell row bent over row',tbar:'t bar',cablerow:'seated cable row',dbrow:'dumbbell row one arm',sapd:'straight arm pulldown',ohp:'dumbbell shoulder press',latraise:'lateral raise side raise',revpec:'rear delt machine',ohext:'overhead triceps extension',cgbench:'close grip bench press',dips:'dip',pushdown:'triceps pushdown rope',bench:'bench press',incline:'incline dumbbell press',fly:'cable fly crossover',bbcurl:'barbell curl biceps',hammer:'hammer curl',inccurl:'incline dumbbell curl',squat:'back squat',legpress:'leg press',bulgarian:'bulgarian split squat',lunge:'lunges',legext:'leg extension',legcurl:'seated leg curl hamstring',calf:'standing calf raise',rdl:'romanian deadlift rdl',hipthrust:'hip thrust glute bridge',abduction:'hip abduction',legraise:'hanging leg raise',mpress:'military press overhead press ohp',arnold:'arnold press',frontraise:'front raise',cablelat:'cable lateral raise',rdfly:'rear delt fly reverse fly',shrug:'shrugs',chinup:'chin up',deadlift:'deadlift',pushup:'push up',dbbench:'dumbbell bench press',pecdeck:'pec deck machine fly',skull:'skull crusher lying triceps extension',cablecurl:'cable curl',kickback:'triceps kickback',preacher:'preacher curl scott',goblet:'goblet squat',stepup:'step up',adduction:'hip adduction',glutekick:'cable glute kickback',plank:'plank',crunch:'crunch',cablecrunch:'cable crunch kneeling',pallof:'pallof press anti rotation',hyperext:'back extension hyperextension υπερεκτασεις ραχιαιοι μεση',birddog:'bird dog τετραποδη ραχιαιοι',superman:'superman ραχιαιοι μεση',revhyper:'reverse hyper reverse hyperextension ραχιαιοι',revcrunch:'reverse crunch κατω κοιλιακοι',deadbug:'dead bug κατω κοιλιακοι',lyingleg:'lying leg raise κατω κοιλιακοι',kneeraise:'hanging knee raise κατω κοιλιακοι',sidebend:'side bend πλαγιοι',woodchop:'woodchop wood chop cable chop πλαγιοι',sideplank:'side plank πλαγιοι',bicycle:'bicycle crunch πλαγιοι',sumosq:'sumo squat plie',bridge:'glute bridge',sldl:'single leg rdl romanian deadlift',lyingcurl:'lying leg curl hamstring',seatcalf:'seated calf raise',goodmorning:'good morning',pullthrough:'cable pull through'};
 const nrm=t=>String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ς/g,'σ').replace(/[^a-z0-9α-ω]+/g,' ').trim();
 const SRCH={};for(const k in E){const e=E[k];SRCH[k]=[nrm([e.n,e.en||'',AKA[k]||''].join(' ')),nrm(e.p.map(m=>M[m]).join(' ')),nrm([...e.s.map(m=>M[m]),e.cat==='legs'?'ποδια':CATS[e.cat]].join(' '))]}
 // βαθμός: 3 = όνομα, 2 = κύριος μυς, 1 = βοηθητικός μυς/κατηγορία, 0 = δεν ταιριάζει
@@ -1843,6 +1994,18 @@ pullthrough:{P:'Λίγο πιο ανοιχτά από τους ώμους, μύ�
 plank:{P:'Στις μύτες, στο πλάτος των ισχίων.',G:'Τεντωμένα.',L:'Λεκάνη ελαφρά γερμένη πίσω (σφιγμένοι γλουτοί) ώστε να μην πέφτει η μέση.',K:'Ευθεία γραμμή από το κεφάλι ως τις φτέρνες.',W:'Αγκώνες κάτω από τους ώμους, σπρώξε το πάτωμα μακριά.',H:'Λαιμός ουδέτερος, βλέμμα στο πάτωμα.',X:'Πήχεις στο πάτωμα, παράλληλοι ή ελαφρά προς τα μέσα, παλάμες κάτω.',B:'Ήρεμη, σταθερή αναπνοή.',F:'Κοιλιακοί.'},
 crunch:{P:'Πέλματα στο έδαφος, στο πλάτος των ισχίων.',G:'Λυγισμένα περίπου στις 90°.',L:'Η μέση ακουμπά στο πάτωμα.',K:'Τυλίγεις τον κορμό, πλευρά προς τη λεκάνη.',H:'Πηγούνι λίγο προς το στήθος, σταθερό.',X:'Δάχτυλα ελαφρά στους κροτάφους — όχι πλεγμένα πίσω από το κεφάλι.',A:'Ανοιχτοί στο πλάι.',B:'Εκπνοή καθώς ανεβαίνεις, εισπνοή καθώς κατεβαίνεις.',F:'Ορθός κοιλιακός.'},
 cablecrunch:{G:'Στο πάτωμα, στο πλάτος των ισχίων.',L:'Ισχία ακίνητα· η κάμψη γίνεται στον κορμό.',K:'Τυλίγεις τον κορμό, πλευρά προς τη λεκάνη.',H:'Κεφάλι ανάμεσα στα χέρια, κινείται μαζί με τον κορμό.',X:'Σχοινί με ουδέτερη λαβή, δίπλα στο κεφάλι.',A:'Κατεβαίνουν προς τους μηρούς.',B:'Εκπνοή καθώς τυλίγεσαι, εισπνοή στην επιστροφή.',F:'Ορθός κοιλιακός.'},
+hyperext:{P:'Πέλματα στην πλατφόρμα, φτέρνες κάτω από τα στηρίγματα.',G:'Τεντωμένα ή ελάχιστα λυγισμένα.',L:'Το μαξιλάρι λίγο κάτω από τη γραμμή των ισχίων, ώστε η κάμψη να γίνεται ελεύθερα από τα ισχία.',K:'Πλάτη ίσια σε όλη τη διαδρομή· στο πάνω σημείο ευθεία με τα πόδια, όχι πιο πίσω.',W:'Ωμοπλάτες σταθερές.',H:'Λαιμός στη γραμμή της πλάτης.',X:'Χέρια σταυρωμένα στο στήθος (πιο εύκολο) ή πίσω από το κεφάλι (πιο δύσκολο). Για επιπλέον βάρος, δίσκος στο στήθος.',B:'Εισπνοή καθώς κατεβαίνεις, εκπνοή καθώς ανεβαίνεις.',F:'Ορθωτήρες της σπονδυλικής και γλουτοί.'},
+birddog:{P:'Μύτες ή ράχη ποδιών στο πάτωμα.',G:'Κάτω από τα ισχία, στο πλάτος τους.',L:'Ίσια· δεν στρίβει και δεν γέρνει όταν σηκώνεται το πόδι.',K:'Μέση ουδέτερη, σαν να ισορροπεί ένα ποτήρι στην πλάτη.',W:'Παλάμες κάτω από τους ώμους, σπρώξε το πάτωμα μακριά.',H:'Λαιμός ουδέτερος, βλέμμα στο πάτωμα.',X:'Το χέρι τεντώνεται μπροστά στο ύψος του ώμου, αντίχειρας προς τα πάνω.',B:'Εκπνοή καθώς τεντώνεις, ήρεμη αναπνοή στο κράτημα.',F:'Σταθερότητα της μέσης με ταυτόχρονη κίνηση χεριού και ποδιού.'},
+superman:{P:'Ενωμένα, μύτες τεντωμένες.',G:'Τεντωμένα.',L:'Σφιγμένοι γλουτοί, η λεκάνη μένει στο πάτωμα.',K:'Το στήθος ανεβαίνει λίγα εκατοστά.',W:'Ωμοπλάτες προς τα κάτω και πίσω.',H:'Βλέμμα στο πάτωμα, λαιμός στη γραμμή της πλάτης.',X:'Χέρια τεντωμένα μπροστά, αντίχειρες προς τα πάνω.',B:'Εκπνοή καθώς ανεβαίνεις, εισπνοή καθώς κατεβαίνεις.',F:'Ορθωτήρες της σπονδυλικής και γλουτοί.'},
+revhyper:{P:'Ενωμένα ή στο πλάτος των ισχίων.',G:'Σχεδόν τεντωμένα.',L:'Τα ισχία ακριβώς στην άκρη του πάγκου.',K:'Ο κορμός μένει ακίνητος πάνω στον πάγκο.',W:'Χαλαροί.',H:'Λαιμός ουδέτερος.',X:'Κράτα σταθερά τις άκρες του πάγκου.',B:'Εκπνοή καθώς ανεβάζεις τα πόδια, εισπνοή καθώς τα κατεβάζεις.',F:'Γλουτοί και κάτω μέση· η κίνηση σταματά στην ευθεία.'},
+revcrunch:{P:'Στον αέρα, ενωμένα.',G:'Λυγισμένα περίπου στις 90°.',L:'Τυλίγεται προς το στήθος· τα ισχία ξεκολλούν λίγο από το πάτωμα.',K:'Ο θώρακας και οι ώμοι μένουν στο πάτωμα.',H:'Κεφάλι στο πάτωμα, χαλαρό.',X:'Παλάμες στο πάτωμα δίπλα στο σώμα, για ισορροπία μόνο.',B:'Εκπνοή καθώς τυλίγεις, εισπνοή καθώς κατεβαίνεις.',F:'Κάτω μέρος του ορθού κοιλιακού.'},
+deadbug:{P:'Στον αέρα· στην έκταση, η φτέρνα λίγο πάνω από το πάτωμα.',G:'Στις 90° στην αρχική θέση.',L:'Η μέση μένει κολλημένη στο πάτωμα σε όλη την κίνηση.',K:'Πλευρά προς τα κάτω, κοιλιακοί σφιγμένοι.',W:'Στο πάτωμα.',H:'Κεφάλι στο πάτωμα.',X:'Χέρια τεντωμένα κάθετα προς το ταβάνι.',B:'Εκπνοή καθώς τεντώνεις, εισπνοή καθώς επιστρέφεις.',F:'Σταθερή λεκάνη ενώ κινούνται τα άκρα.'},
+lyingleg:{P:'Ενωμένα, μύτες χαλαρές.',G:'Τεντωμένα (ή ελαφρά λυγισμένα για ευκολότερη εκδοχή).',L:'Η μέση μένει στο πάτωμα· στο πάνω σημείο η λεκάνη τυλίγεται ελαφρά.',K:'Ακίνητος στο πάτωμα.',H:'Κεφάλι στο πάτωμα.',X:'Παλάμες στο πάτωμα δίπλα στο σώμα ή κάτω από τους γλουτούς.',B:'Εκπνοή καθώς ανεβάζεις, εισπνοή καθώς κατεβάζεις.',F:'Κοιλιακοί· σταμάτα πριν κάνει καμάρα η μέση.'},
+kneeraise:{P:'Ενωμένα.',G:'Λυγισμένα, ανεβαίνουν προς το στήθος.',L:'Στο πάνω σημείο τυλίγεται προς τα πίσω.',K:'Χωρίς αιώρηση.',W:'Ενεργοί, μακριά από τα αυτιά.',H:'Βλέμμα μπροστά.',X:'Πρηνισμένη λαβή στο μονόζυγο, λίγο πιο ανοιχτή από τους ώμους.',A:'Τεντωμένοι.',B:'Εκπνοή καθώς ανεβάζεις τα γόνατα, εισπνοή καθώς τα κατεβάζεις.',F:'Τύλιγμα της λεκάνης, όχι μόνο ανέβασμα των μηρών.'},
+sidebend:{P:'Στο πλάτος των ισχίων.',G:'Ελαφρά λυγισμένα.',L:'Σταθερή, δεν μετατοπίζεται στο πλάι.',K:'Κάμψη μόνο στο πλάι, χωρίς σκύψιμο ή στροφή.',W:'Χαλαροί.',H:'Βλέμμα μπροστά.',X:'Ουδέτερη λαβή στον αλτήρα, το άλλο χέρι στο ισχίο.',B:'Εισπνοή καθώς γέρνεις, εκπνοή καθώς ανεβαίνεις.',F:'Πλάγιοι κοιλιακοί της αντίθετης πλευράς από τον αλτήρα.'},
+woodchop:{P:'Στο άνοιγμα των ώμων· το πίσω πόδι περιστρέφεται στη μύτη.',G:'Ελαφρά λυγισμένα· λυγίζουν λίγο περισσότερο στο κάτω σημείο.',L:'Ακολουθεί τη στροφή, χωρίς να στρογγυλεύει η μέση.',K:'Η στροφή ξεκινά από τον κορμό.',W:'Ώμοι κάτω.',H:'Το βλέμμα ακολουθεί τη λαβή.',X:'Και τα δύο χέρια στη λαβή.',A:'Σχεδόν τεντωμένοι σε όλη την κίνηση.',B:'Εκπνοή καθώς κατεβαίνεις, εισπνοή στην επιστροφή.',F:'Πλάγιοι κοιλιακοί και στροφή του κορμού.'},
+sideplank:{P:'Το ένα πάνω στο άλλο (ή το ένα μπροστά από το άλλο για περισσότερη ισορροπία).',G:'Τεντωμένα, ή λυγισμένα στο πάτωμα για ευκολότερη εκδοχή.',L:'Ψηλά, σε ευθεία με τους ώμους και τα πόδια· δεν πηγαίνει πίσω.',K:'Ευθεία γραμμή από το κεφάλι ως τα πόδια.',W:'Αγκώνας ακριβώς κάτω από τον ώμο, σπρώξε το πάτωμα μακριά.',H:'Λαιμός στη γραμμή του κορμού.',X:'Πήχης στο πάτωμα, το άλλο χέρι στο ισχίο.',B:'Ήρεμη, κανονική αναπνοή στο κράτημα.',F:'Πλάγιοι κοιλιακοί της πλευράς που είναι κάτω.'},
+bicycle:{P:'Στον αέρα.',G:'Το ένα λυγίζει προς το στήθος, το άλλο τεντώνεται.',L:'Η μέση μένει στο πάτωμα.',K:'Οι ωμοπλάτες λίγο πάνω από το πάτωμα· ο κορμός στρίβει.',W:'Ο ώμος πηγαίνει προς το αντίθετο γόνατο.',H:'Πηγούνι λίγο προς το στήθος, χωρίς τράβηγμα.',X:'Δάχτυλα ελαφρά στους κροτάφους.',A:'Ανοιχτοί στο πλάι.',B:'Εκπνοή σε κάθε στροφή.',F:'Στροφή του κορμού, όχι κίνηση του αγκώνα.'},
 pallof:{P:'Λίγο πιο ανοιχτά από τα ισχία, πλάγια στην τροχαλία.',G:'Ελαφρά λυγισμένα.',L:'Λεκάνη ίσια και στραμμένη μπροστά.',K:'Κορμός ακίνητος — αντιστέκεσαι στην περιστροφή.',W:'Ώμοι κάτω.',H:'Βλέμμα μπροστά.',X:'Και τα δύο χέρια στη λαβή, καρποί ίσιοι.',A:'Τεντώνουν πλήρως μπροστά και επιστρέφουν στο στέρνο.',B:'Εκπνοή καθώς σπρώχνεις, εισπνοή στην επιστροφή.',F:'Κοιλιακοί και πλάγιοι.'},
 };
 const MD={
@@ -1943,7 +2106,19 @@ pullthrough:[['gmax'],['bf','st','ere']],
 plank:[['abs'],['obl','dA','gmax']],
 crunch:[['abs'],['obl']],
 cablecrunch:[['abs'],['obl']],
-pallof:[['obl','abs'],['gmed']]};
+pallof:[['obl','abs'],['gmed']],
+hyperext:[['ere'],['gmax','bf','st']],
+birddog:[['ere','gmax'],['abs','obl','dA']],
+superman:[['ere'],['gmax','bf','st','trM','dP']],
+revhyper:[['gmax','ere'],['bf','st']],
+revcrunch:[['abs'],['obl']],
+deadbug:[['abs'],['obl','rf']],
+lyingleg:[['abs'],['rf','obl']],
+kneeraise:[['abs'],['obl','rf','ffl']],
+sidebend:[['obl'],['abs','ere']],
+woodchop:[['obl','abs'],['dA','gmax','ser']],
+sideplank:[['obl','abs'],['gmed','dL','ere']],
+bicycle:[['obl','abs'],['rf']]};
 // Ανατομικό μοντέλο: Z-Anatomy (CC BY-SA 4.0), βασισμένο στο BodyParts3D (CC BY 4.0), απλοποιημένο.
 // muscles.bin: 'MUS1', μήκος κεφαλίδας, JSON {lo,hi,m:[{n,v,i,o}]}, μετά θέσεις uint16 κβαντισμένες και δείκτες uint16.
 const MODEL_URL='muscles.json';

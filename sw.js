@@ -1,5 +1,5 @@
 // Service worker: offline λειτουργία. Για νέα έκδοση των αρχείων δεδομένων (JSON) άλλαξε το VERSION.
-const VERSION='v3';
+const VERSION='v4';
 const SHELL = 'gym-shell-' + VERSION;
 const DATA = 'gym-data-' + VERSION;
 const EXT = 'gym-ext-' + VERSION;

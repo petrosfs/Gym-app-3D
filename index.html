@@ -17,12 +17,12 @@
   --skin:#2b2737; --musc:#5e5674; --musc2:#423c52; --bone:#8d8778; --accent:#f06aa8; --accent-ink:#1c0a13; --accent2:#f0b545; --ok:#4cc38a; --warn:#f0a35a; color-scheme:dark }
 /* Ανδρικό θέμα: μπορντό (κύριοι μύες) / πορτοκαλί (βοηθητικοί) */
 :root[data-g="m"]{--bg:#f2f4f8; --surface:#ffffff; --line:#dde2ea; --skin:#e0e5ec; --musc:#8792a8;
-  --accent:#a31630; --accent-ink:#ffffff; --accent2:#e8890c}
+  --accent:#a31630; --accent-ink:#ffffff; --pmus:#a31630; --pmus-ink:#ffffff; --accent2:#e8890c}
 @media (prefers-color-scheme: dark){ :root[data-g="m"]:not([data-theme="light"]){
   --bg:#10141b; --surface:#19202a; --line:#2a3342; --skin:#252c38; --musc:#4a556b;
-  --accent:#e5566a; --accent-ink:#2a0710; --accent2:#f5ac45 } }
+  --accent:#e5566a; --accent-ink:#2a0710; --pmus:#e5566a; --pmus-ink:#2a0710; --accent2:#f5ac45 } }
 :root[data-g="m"][data-theme="dark"]{--bg:#10141b; --surface:#19202a; --line:#2a3342; --skin:#252c38; --musc:#4a556b;
-  --accent:#e5566a; --accent-ink:#2a0710; --accent2:#f5ac45}
+  --accent:#e5566a; --accent-ink:#2a0710; --pmus:#e5566a; --pmus-ink:#2a0710; --accent2:#f5ac45}
 /* Ανδρικό θέμα: επιλογή χρώματος από το Προφίλ (προεπιλογή μπορντό) */
 :root[data-g="m"][data-tone="blue"]{--accent:#1f5fc4; --accent-ink:#ffffff}
 :root[data-g="m"][data-tone="gray"]{--accent:#4b5563; --accent-ink:#ffffff}
@@ -55,7 +55,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 .row > .grow{flex:1;min-width:0}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}
 .chip{display:inline-block;font:600 12px var(--text);padding:3px 9px;border-radius:99px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
-.chip.p{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chip.p{background:var(--pmus,var(--accent));border-color:var(--pmus,var(--accent));color:var(--pmus-ink,var(--accent-ink))}
 .chip.s{border-color:var(--accent2);color:var(--ink)}
 .chip.ok{border-color:var(--ok);color:var(--ok)}
 .warn{color:var(--warn);font-size:13px;font-weight:500}
@@ -121,7 +121,7 @@ select{font:500 14px var(--text);padding:8px;border-radius:8px;border:1px solid 
 .maps{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:300px;margin:0 auto;width:100%}
 .maps figure{margin:0;text-align:center}
 .maps figcaption{font-size:12px;color:var(--muted)}
-.sug{margin:8px 0 2px}.bm .base{fill:var(--line)} .bm .m{fill:var(--body)} .bm .m.p{fill:var(--accent)} .bm .m.s{fill:var(--accent2)}
+.sug{margin:8px 0 2px}.bm .base{fill:var(--line)} .bm .m{fill:var(--body)} .bm .m.p{fill:var(--pmus,var(--accent))} .bm .m.s{fill:var(--accent2)}
 ol.steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
 ul.err{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
 dl.pos{margin:0;display:flex;flex-direction:column}
@@ -155,7 +155,7 @@ details summary{cursor:pointer;font-weight:600}
 .mrow b{display:block;font-weight:600}
 .mrow[aria-pressed="true"] b{color:var(--accent)}
 .dot{width:12px;height:12px;border-radius:50%;margin-top:5px;background:var(--musc)}
-.dot.p{background:var(--accent)} .dot.s{background:var(--accent2)}
+.dot.p{background:var(--pmus,var(--accent))} .dot.s{background:var(--accent2)}
 </style>
 
 <div class="wrap">
@@ -2142,7 +2142,7 @@ const FACE={pecU:0,pecM:0,dA:-30,dL:-90,dP:-150,bic:-20,brach:-60,brr:-40,triL:1
  trU:180,trM:180,trL:180,rho:180,inf:180,ter:-150,lat:180,ere:180,gmax:180,gmed:-110,rf:0,vl:-45,vm:0,add:0,bf:180,st:180,gasL:180,gasM:180,sol:180,tib:-20};
 let V=null,VE=null;
 const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
-const tok=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim()||'#888888';
+const tok=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim()||(n==='--pmus'?tok('--accent'):'#888888');
 function mk3d(){
   if(V!==null)return V;V=false;
   try{if(!window.THREE)return V;
@@ -2223,7 +2223,7 @@ function mount3d(id){
   if(!V.ready){select3d(null);const lab=document.getElementById('m3-lab');if(lab)lab.innerHTML='<span class="small muted">Φόρτωση ανατομικού μοντέλου…</span>';return}
   apply3d(id)}
 function apply3d(id){
-  const[p,s]=MX[id]||[[],[]],cP=tok('--accent'),cS=tok('--accent2'),cI=tok('--musc');
+  const[p,s]=MX[id]||[[],[]],cP=tok('--pmus'),cS=tok('--accent2'),cI=tok('--musc');
   V.bone.color.set(tok('--bone'));V.other.color.set(tok('--musc2'));
   V.eqM.color.set(tok('--muted'));V.eqD.color.set(tok('--ink'));V.eqL.color.set(tok('--muted'));V.floorM.color.set(tok('--line'));
   for(const k in V.mats){V.mats[k].color.set(p.includes(k)?cP:s.includes(k)?cS:cI);V.mats[k].emissive.setHex(0)}

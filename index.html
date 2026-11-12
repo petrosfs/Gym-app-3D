@@ -23,6 +23,14 @@
   --accent:#e5566a; --accent-ink:#2a0710; --accent2:#f5ac45 } }
 :root[data-g="m"][data-theme="dark"]{--bg:#10141b; --surface:#19202a; --line:#2a3342; --skin:#252c38; --musc:#4a556b;
   --accent:#e5566a; --accent-ink:#2a0710; --accent2:#f5ac45}
+/* Ανδρικό θέμα: επιλογή χρώματος από το Προφίλ (προεπιλογή μπορντό) */
+:root[data-g="m"][data-tone="blue"]{--accent:#1f5fc4; --accent-ink:#ffffff}
+:root[data-g="m"][data-tone="gray"]{--accent:#4b5563; --accent-ink:#ffffff}
+@media (prefers-color-scheme: dark){
+:root[data-g="m"][data-tone="blue"]:not([data-theme="light"]){--accent:#5b9cf5; --accent-ink:#06142a}
+:root[data-g="m"][data-tone="gray"]:not([data-theme="light"]){--accent:#b3bccb; --accent-ink:#10141b} }
+:root[data-g="m"][data-tone="blue"][data-theme="dark"]{--accent:#5b9cf5; --accent-ink:#06142a}
+:root[data-g="m"][data-tone="gray"][data-theme="dark"]{--accent:#b3bccb; --accent-ink:#10141b}
 *{box-sizing:border-box}
 .bwin{font:500 15px var(--text);font-variant-numeric:tabular-nums;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);width:110px}
 body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--text);margin:0}
@@ -1800,7 +1808,7 @@ function lvCard(today){const e=estLevel();
 // ---------- Προβολές ----------
 const TABS=[['day','Σήμερα'],['week','Εβδομάδα'],['month','Μήνας'],['lib','Ασκήσεις'],['me','Προφίλ']];
 function render(){
-  document.documentElement.setAttribute('data-g',S.set.sex==='m'?'m':'f');
+  document.documentElement.setAttribute('data-g',S.set.sex==='m'?'m':'f');if(!S.set.tone)S.set.tone='red';document.documentElement.setAttribute('data-tone',S.set.tone);
   document.getElementById('tabs').innerHTML=TABS.map(([k,l])=>`<button role="tab" aria-selected="${ui.tab===k}" data-act="tab" data-v="${k}">${l}</button>`).join('');
   document.getElementById('root').innerHTML=(ui.tab==='day'?bkBanner():'')+{day:vDay,week:vWeek,month:vMonth,lib:vLib,me:vMe}[ui.tab]();
 }
@@ -1910,6 +1918,7 @@ function vMe(){
   return `<div class="head"><span class="eyebrow">Στοιχεία προπόνησης</span><h1>Προφίλ</h1><p class="muted">Με βάση αυτά προτείνεται ο αριθμός των προπονήσεων, οι επαναλήψεις και ο όγκος.</p></div>
    <div class="card stack">
     <div class="field"><span>Φύλο</span>${opt('sex',SEX)}</div>
+    ${s.sex==='m'?`<div class="field"><span>Χρώμα θέματος</span>${opt('tone',{red:'Μπορντό',blue:'Μπλε',gray:'Γκρι'})}</div>`:''}
     <div class="field"><span>Ηλικία</span>${opt('ag',AGS)}${ageForm('age-me')}${S.set.age?`<p class="small muted">Έχεις δώσει ακριβή ηλικία (${S.set.age}). Αν διαλέξεις ηλικιακή ομάδα, η ακριβής ηλικία διαγράφεται.</p>`:''}${ageInfo().known?'':'<p class="small muted">Η ηλικία χρειάζεται για να ερμηνεύονται σωστά οι δείκτες υγείας παρακάτω.</p>'}</div>
     <div class="field"><span>Εμπειρία με βάρη</span>${opt('exp',EXP)}</div>
     <div class="field"><span>Επίπεδο</span>${opt('level',LVB)}</div>

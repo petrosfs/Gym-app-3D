@@ -1534,8 +1534,37 @@ const EXP={0:'Κάτω από 6 μήνες',1:'6–12 μήνες',2:'1–3 χρ�
 // Όρια ανά επίπεδο (αρχάριο, βασικό, μέτριο, προχωρημένο, πολύ προχωρημένο) ως πολλαπλάσια του σωματικού βάρους, από το Strength Level.
 // Όπου λείπουν επίπεδα (θηλυκό: άρση θανάτου, πρέσα ποδιών) χρησιμοποιείται το τελευταίο γνωστό, δηλαδή η πρόταση μένει συντηρητική.
 // Για αλτήρες (ohp) οι τιμές αφορούν κάθε αλτήρα ξεχωριστά.
-const STD={m:{squat:[.75,1.25,1.75,2.25,2.75],bench:[.5,1,1.25,1.5,2],deadlift:[1,1.5,2,2.5,3.25],bbrow:[.5,.75,1,1.5,1.75],latpull:[.5,.75,1,1.5,1.75],cablerow:[.5,.75,1,1.5,1.75],hipthrust:[.5,1.25,1.75,2.75,3.75],mpress:[.35,.55,.8,1.05,1.35],ohp:[.15,.25,.4,.6,.75],legpress:[1.25,2,2.75,4,5.25],dbrow:[.2,.35,.55,.75,1],dbbench:[.2,.35,.5,.7,.9],legext:[.5,1,1.25,1.75,2.5],legcurl:[.5,.75,1,1.5,2],rdl:[.75,1,1.5,2,2.75],bbcurl:[.1,.25,.4,.55,.75],pushdown:[.25,.45,.7,1.05,1.4],cgbench:[.5,.75,1.25,1.5,2],skull:[.2,.35,.55,.8,1.1],goblet:[.2,.35,.55,.75,1.05]},
- f:{squat:[.5,.75,1.25,1.75,2.25],bench:[.3,.5,.75,1.1,1.45],deadlift:[.75,1],bbrow:[.3,.45,.7,.95],latpull:[.35,.5,.75,.95],cablerow:[.35,.5,.75,1,1.3],hipthrust:[.5,1,1.75,2.5],mpress:[.2,.35,.5,.7,.95],ohp:[.1,.15,.25,.35,.5],legpress:[.75,1.5],legext:[.25,.5,1,1.25],legcurl:[.3,.5,.75,1.05,1.4],rdl:[.5,.75,1,1.5],pushdown:[.15,.25,.45,.7,.95],cgbench:[.3,.5],goblet:[.15,.25,.4,.6,.8]}};
+const STD={m:{squat:[.75,1.25,1.75,2.25,2.75],bench:[.5,1,1.25,1.5,2],deadlift:[1,1.5,2,2.5,3.25],bbrow:[.5,.75,1,1.5,1.75],latpull:[.5,.75,1,1.5,1.75],cablerow:[.5,.75,1,1.5,1.75],hipthrust:[.5,1.25,1.75,2.75,3.75],mpress:[.35,.55,.8,1.05,1.35],ohp:[.15,.25,.4,.6,.75],legpress:[1.25,2,2.75,4,5.25],dbrow:[.2,.35,.55,.75,1],dbbench:[.2,.35,.5,.7,.9],legext:[.5,1,1.25,1.75,2.5],legcurl:[.5,.75,1,1.5,2],rdl:[.75,1,1.5,2,2.75],bbcurl:[.25,.4,.6,.8,1.05],incline:[.25,.35,.5,.65,.85],latraise:[.05,.1,.2,.3,.45],facepull:[.2,.35,.6,.9,1.25],fly:[.1,.25],hammer:[.1,.2,.3,.4,.55],pecdeck:[.5,.75,1,1.5,2],lunge:[.1,.2,.4,.6,.8],woodchop:[.1,.25,.45,.75,1.1],pushdown:[.25,.45,.7,1.05,1.4],cgbench:[.5,.75,1.25,1.5,2],skull:[.2,.35,.55,.8,1.1],goblet:[.2,.35,.55,.75,1.05]},
+ f:{squat:[.5,.75,1.25,1.75,2.25],bench:[.3,.5,.75,1.1,1.45],deadlift:[.75,1],bbrow:[.3,.45,.7,.95],latpull:[.35,.5,.75,.95],cablerow:[.35,.5,.75,1,1.3],hipthrust:[.5,1,1.75,2.5],mpress:[.2,.35,.5,.7,.95],ohp:[.1,.15,.25,.35,.5],legpress:[.75,1.5],legext:[.25,.5,1,1.25],legcurl:[.3,.5,.75,1.05,1.4],rdl:[.5,.75,1,1.5],pushdown:[.15,.25,.45,.7,.95],cgbench:[.3,.5],goblet:[.15,.25,.4,.6,.8],bbcurl:[.1,.25,.4,.55,.75],latraise:[.05,.1,.15,.2,.3],facepull:[.15,.3,.5,.75,1.05],fly:[.05,.15,.3,.45,.7],hammer:[.1,.15,.2,.25,.35],pecdeck:[.2,.35,.6,.9],shrug:[.1,.2,.4,.6,.85]}};
+
+// Εκτιμήσεις (όχι πίνακες δεδομένων) για ασκήσεις χωρίς καθαρά όρια στο Strength Level: τα απόλυτα βάρη των πινάκων του διαιρούνται με το μέσο σωματικό βάρος
+// (άνδρες 172 lb, γυναίκες 142 lb), ή προκύπτουν από παρόμοια άσκηση με συντελεστή. Φαίνονται στην εφαρμογή ως «εκτίμηση».
+const EST=(()=>{const A={m:172,f:142},w=(sx,a)=>a.map(x=>+(x/A[sx]).toFixed(2)),mul=(a,c)=>a.map(x=>+(x*c).toFixed(2)),F=.65,
+ m={},f={};
+ m.frontraise=w('m',[7,19,39,66,98]);f.frontraise=w('f',[4,11,23,38,56]);
+ m.rdfly=w('m',[5,18,39,70,106]);f.rdfly=w('f',[4,11,22,37,55]);
+ m.preacher=w('m',[40,64,96,133,174]);f.preacher=w('f',[19,35,55,81,109]);
+ m.inccurl=w('m',[13,26,43,64,89]);f.inccurl=w('f',[7,16,28,44,62]);
+ m.cablecurl=w('m',[29,63,108,157,214]);f.cablecurl=w('f',[13,31,56,85,118]);
+ m.pullthrough=w('m',[29,70,132,213,308]);f.pullthrough=w('f',[22,50,92,147,211]);
+ m.cablecrunch=w('m',[40,92,169,269,386]);f.cablecrunch=w('f',[26,65,126,208,304]);
+ m.goodmorning=w('m',[52,109,191,296,416]);f.goodmorning=w('f',[28,57,97,148,207]);
+ m.bulgarian=w('m',[20,38,64,96,133]);f.bulgarian=w('f',[12,22,37,55,77]);
+ f.lunge=w('f',[12,24,41,62,86]);m.shrug=w('m',[32,61,101,151,209]);f.woodchop=w('f',[13,27,47,72,101]);
+ m.abduction=w('m',[66,131,222,337,470]);f.abduction=w('f',[52,98,162,243,335]);
+ m.adduction=w('m',[70,140,241,367,513]);f.adduction=w('f',[49,94,157,235,325]);
+ m.seatcalf=[22,53,100,162,235].map(x=>+(x/78).toFixed(2));f.seatcalf=mul(m.seatcalf,F);
+ f.dbrow=w('f',[20,32,48,67,88]);f.dbbench=w('f',[15,28,44,65,89]);
+ m.arnold=w('m',[19,34,54,79,107]);f.arnold=mul(m.arnold,F);
+ m.lyingcurl=[23,40,64,93,126].map(x=>+(x/78).toFixed(2));f.lyingcurl=mul(m.lyingcurl,F);
+ f.incline=mul(STD.m.incline,F);f.skull=mul(STD.m.skull,F);
+ for(const sx of['m','f']){const T=sx==='m'?m:f,S=STD[sx],g=id=>S[id]||T[id];
+  T.tbar=mul(S.bbrow,.9);T.sapd=mul(S.latpull,.4);T.ohext=mul(S.pushdown||STD.m.pushdown,.7);T.cablelat=mul(S.latraise,.8);T.kickback=mul(S.pushdown||STD.m.pushdown,.3);
+  T.pallof=mul(g('woodchop'),.7);T.stepup=mul(g('lunge'),.9);T.sumosq=S.goblet.slice();T.revpec=mul(S.pecdeck,.4);T.sidebend=mul(S.latraise,2.4);T.glutekick=mul(T.pullthrough,.4);}
+ m.sldl=mul([.25,.5,.75,1.25,1.5],.5);f.sldl=mul([.2,.35],.5);
+ m.calf=mul([.5,1,1.5,2.25,3.25],.25);f.calf=mul([.5,.75,1.25,1.75],.25);
+ return{m,f}})();
+
 const GL={hyp:'Υπερτροφία',both:'Υπερτροφία και δύναμη',str:'Δύναμη',mnt:'Συντήρηση'},SEX={f:'Γυναίκα',m:'Άνδρας'};
 const WK=w=>S.set.goal==='mnt'?['Διατήρηση','Ίδια κιλά κάθε εβδομάδα. Σταμάτα 2–3 επαναλήψεις πριν την αστοχία.']:WEEKS[w];
 
@@ -1702,10 +1731,10 @@ function sug(x,d,wk){const id=x.id,e=E[id],[lo,hi]=rng(x.reps),pl=prevLog(id,d),
   if(HOLD.has(id))return{kg:null,rp:'20–30',why:'Πρώτη φορά: κράτα όσο μένει σωστή η θέση· στο πεδίο επαναλήψεων γράψε τα δευτερόλεπτα.'};
   if(bw)return{kg:null,rp:`${lo}–${hi}`,why:'Πρώτη φορά: κάνε όσες επαναλήψεις βγαίνουν καθαρά, με τεχνική, χωρίς να φτάσεις στην αστοχία.'};
   const sx=S.set.sex==='m'?'m':'f',b=bwLast(),li=Math.max(0,LK.indexOf(S.set.level));
-  if(STD[sx][id]&&b){const T=STD[sx][id],ratio=T[Math.min(li,T.length-1)],isBar=['squat','bench','deadlift','bbrow','hipthrust','mpress','rdl','cgbench'].includes(id),isDb=/db/.test(e.eq||''),st=isDb?1:2.5;
+  const isEst=!STD[sx][id]&&!!EST[sx][id];if((STD[sx][id]||EST[sx][id])&&b){const T=STD[sx][id]||EST[sx][id],ratio=T[Math.min(li,T.length-1)],isBar=['squat','bench','deadlift','bbrow','hipthrust','mpress','rdl','cgbench','goodmorning'].includes(id),isDb=/db/.test(e.eq||'')||id==='sidebend',st=isDb?1:2.5;
     let kg=rdn(ratio*b.kg*.5*(ageInfo().senior?.9:1),st);if(isBar&&kg<20)kg=20;if(kg<st)kg=st;
-    const note=isBar?' (η άδεια μπάρα είναι συνήθως 20 kg)':id==='goblet'?' (ένας αλτήρας)':isDb?' (ανά αλτήρα)':'';
-    return{kg,rp:`${lo}`,why:`Πρώτη φορά, πολύ συντηρητικά: περίπου το 50% του μέγιστου που αντιστοιχεί στο επίπεδο «${LVN[S.set.level]}» για σωματικό βάρος ${String(b.kg).replace('.',',')} kg${note}. Αν βγαίνει πολύ εύκολα, ανέβα ${isDb?'1–2':'2,5–5'} kg στο επόμενο σετ.`}}
+    const note=isBar?' (η άδεια μπάρα είναι συνήθως 20 kg)':id==='goblet'||id==='sidebend'?' (ένας αλτήρας)':isDb?' (ανά αλτήρα)':'';
+    return{kg,rp:`${lo}`,why:`${isEst?'Εκτίμηση (δεν υπάρχουν καθαρά όρια για αυτή την άσκηση). ':''}Πρώτη φορά, πολύ συντηρητικά: περίπου το 50% του μέγιστου που αντιστοιχεί στο επίπεδο «${LVN[S.set.level]}» για σωματικό βάρος ${String(b.kg).replace('.',',')} kg${note}. Αν βγαίνει πολύ εύκολα, ανέβα ${isDb?'1–2':'2,5–5'} kg στο επόμενο σετ.`}}
   return{kg:null,rp:`${lo}`,why:`Πρώτη φορά: βάρος που θα σήκωνες άνετα ${hi+4} φορές. Από την επόμενη φορά η πρόταση βγαίνει από τις καταγραφές σου.`}}
 function prevLog(id,date){const l=S.logs[id];if(!l)return null;const ds=Object.keys(l).filter(d=>d<date).sort();return ds.length?l[ds[ds.length-1]]:null}
 const e1=(w,r)=>w*(1+r/30);

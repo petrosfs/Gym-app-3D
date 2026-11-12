@@ -41,8 +41,10 @@ h1{font-size:30px} h2{font-size:24px} h3{font-size:19px}
 p{margin:0}
 .muted{color:var(--muted)} .small{font-size:13px}
 .num{font-variant-numeric:tabular-nums}
-nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--bg);padding-block:10px;display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
-nav.tabs button{font:600 12.5px var(--text);padding:9px 2px;border-radius:10px;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer}
+nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--bg);padding-block:10px;display:grid;grid-template-columns:repeat(6,auto);justify-content:space-between;gap:2px}
+nav.tabs button{font:600 11px var(--text);letter-spacing:-.2px;padding:9px 5px;overflow:hidden;white-space:nowrap;border-radius:10px;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer}
+@media (max-width:379px){nav.tabs button{font-size:10px;letter-spacing:-.3px;padding:9px 2px}}
+@media (max-width:339px){nav.tabs{overflow-x:auto;grid-template-columns:repeat(6,max-content)}}
 nav.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
 button{font:inherit;color:inherit}
 button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -134,6 +136,15 @@ dl.pos .f dd{font-weight:600}
 details summary{cursor:pointer;font-weight:600}
 .spark{stroke:var(--accent);fill:none;stroke-width:2}
 .spark-dot{fill:var(--accent)}
+.stat3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat3>div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 8px;text-align:center}
+.stat3 b{display:block;font-size:22px;line-height:1.1}
+.chart{width:100%;height:auto;display:block}
+.chart .bar{fill:var(--accent)} .chart .bar.cur{fill:var(--accent2)} .chart .ln{stroke:var(--accent);fill:none;stroke-width:2}
+.chart text{fill:var(--muted);font:10px var(--text)} .chart .ax{stroke:var(--line)}
+.mbar{display:grid;grid-template-columns:minmax(0,1fr) 90px 34px;gap:8px;align-items:center;padding-block:4px}
+.mbar i{display:block;height:8px;border-radius:4px;background:var(--pmus,var(--accent))}
+.up{color:#1a8a4a} .dn{color:#c0392b}
 .prog{display:grid;grid-template-columns:1fr 110px;gap:10px;align-items:center;padding-block:8px;border-top:1px solid var(--line)}
 .prog:first-child{border-top:0}
 .m3{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;max-width:460px;margin:0 auto;width:100%}
@@ -1835,11 +1846,11 @@ function lvCard(today){const e=estLevel();
   return h+'</div>'}
 
 // ---------- Προβολές ----------
-const TABS=[['day','Σήμερα'],['week','Εβδομάδα'],['month','Μήνας'],['lib','Ασκήσεις'],['me','Προφίλ']];
+const TABS=[['day','Σήμερα'],['week','Εβδομάδα'],['month','Μήνας'],['stats','Στατιστικά'],['lib','Ασκήσεις'],['me','Προφίλ']];
 function render(){
   document.documentElement.setAttribute('data-g',S.set.sex==='m'?'m':'f');if(!S.set.tone)S.set.tone='red';document.documentElement.setAttribute('data-tone',S.set.tone);
   document.getElementById('tabs').innerHTML=TABS.map(([k,l])=>`<button role="tab" aria-selected="${ui.tab===k}" data-act="tab" data-v="${k}">${l}</button>`).join('');
-  document.getElementById('root').innerHTML=(ui.tab==='day'?bkBanner():'')+{day:vDay,week:vWeek,month:vMonth,lib:vLib,me:vMe}[ui.tab]();
+  document.getElementById('root').innerHTML=(ui.tab==='day'?bkBanner():'')+{day:vDay,week:vWeek,month:vMonth,stats:vStats,lib:vLib,me:vMe}[ui.tab]();
 }
 function vDay(){
   const d=ui.date,mon=monday(d),i0=dow(d),wp=weekPlan(mon),wid=wp.p[i0],inf=wp.inf[i0],wk=weekIdx(d);
@@ -1913,11 +1924,65 @@ function vMonth(){
     h+='</div>'}
   h+=`<div class="row"><button class="btn" data-act="newcycle">Νέος κύκλος από αυτή την εβδομάδα</button></div>`;
   if(S.set.mode==='dates')h+=offCard();
-  const ids=Object.keys(S.logs).filter(id=>E[id]&&series(id).length);
-  h+=`<h2 style="margin-top:8px">Πρόοδος</h2>`;
-  if(!ids.length)h+=`<p class="muted">Εδώ θα εμφανίζεται η εξέλιξη ανά άσκηση. Κατάγραψε κιλά και επαναλήψεις στην καρτέλα «Σήμερα» για να ξεκινήσει.</p>`;
-  else{h+='<div class="card">';ids.forEach(id=>{const s=series(id),l=s[s.length-1];
-    h+=`<div class="prog"><div style="min-width:0"><b>${E[id].n}</b><p class="small muted num">Καλύτερο σετ τελευταίας φοράς: ${BWX[id]?'σώμα +'+l.top[0]:l.top[0]} kg × ${l.top[1]} · εκτιμώμενο μέγιστο ${Math.round(l.b)} kg${bwAt(l.d)?' · '+(l.b/bwAt(l.d)).toFixed(2).replace('.',',')+'× σωματικό βάρος':''}</p></div>${spark(s.slice(-12))}</div>`});h+='</div>'}
+  h+=`<div class="row"><button class="btn" data-act="tab" data-v="stats">Στατιστικά και πρόοδος</button></div>`;
+  return h}
+// ---------- Στατιστικά ----------
+const pct=(a,b)=>b?Math.round((a-b)/b*100):null;
+const pctTxt=v=>v==null?'—':`<span class="${v>0?'up':v<0?'dn':''}">${v>0?'+':''}${v}%</span>`;
+function setsOn(d){const out=[];for(const id in S.logs){const l=S.logs[id][d];if(!l||!E[id])continue;const add=BWX[id]?bwAt(d)||0:0;
+  l.forEach(x=>{if(x&&x[1]>0)out.push({id,w:x[0]?x[0]+add:add,r:x[1]})})}return out}
+function logDays(){const ds=new Set();for(const id in S.logs)for(const d in S.logs[id])ds.add(d);return ds}
+function barChart(vals,labs,cur,unit){const W=300,H=96,n=vals.length,mx=Math.max(...vals,1),bw=W/n;
+  return `<svg class="chart" viewBox="0 0 ${W} ${H+14}" role="img" aria-label="${labs.map((l,i)=>l+': '+vals[i]+(unit||'')).join(', ')}">
+   <line class="ax" x1="0" x2="${W}" y1="${H}" y2="${H}"/>${vals.map((v,i)=>{const h=v/mx*(H-14);return `<rect class="bar${i===cur?' cur':''}" x="${(i*bw+bw*.18).toFixed(1)}" width="${(bw*.64).toFixed(1)}" y="${(H-h).toFixed(1)}" height="${h.toFixed(1)}" rx="2"/>`+(v?`<text x="${(i*bw+bw/2).toFixed(1)}" y="${(H-h-3).toFixed(1)}" text-anchor="middle">${v>=1000?Math.round(v/100)/10+'k':v}</text>`:'')}).join('')}
+   ${labs.map((l,i)=>(n-1-i)%3===0||n<=6?`<text x="${(i*bw+bw/2).toFixed(1)}" y="${H+12}" text-anchor="middle">${l}</text>`:'').join('')}</svg>`}
+function lineChart(pts,unit){if(pts.length<2)return'<p class="small muted">Χρειάζονται τουλάχιστον 2 καταγραφές.</p>';const W=300,H=90,lo=Math.min(...pts.map(p=>p.v)),hi=Math.max(...pts.map(p=>p.v)),sp=hi-lo||1,t0=pd(pts[0].d),t1=pd(pts[pts.length-1].d),ts=(t1-t0)||1;
+  const xy=pts.map(p=>[30+(pd(p.d)-t0)/ts*(W-36),8+(1-(p.v-lo)/sp)*(H-16)]),f=v=>fnum(v,1);
+  return `<svg class="chart" viewBox="0 0 ${W} ${H+14}" role="img" aria-label="Από ${f(pts[0].v)} σε ${f(pts[pts.length-1].v)} ${unit}">
+   <text x="0" y="12">${f(hi)}</text><text x="0" y="${H}">${f(lo)}</text><line class="ax" x1="28" x2="${W}" y1="${H}" y2="${H}"/>
+   <polyline class="ln" points="${xy.map(p=>p.map(v=>v.toFixed(1)).join(',')).join(' ')}"/>${xy.map(p=>`<circle class="spark-dot" r="2.5" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}"/>`).join('')}
+   <text x="30" y="${H+12}">${fmt(pts[0].d).split(' ')[1]}</text><text x="${W}" y="${H+12}" text-anchor="end">${fmt(pts[pts.length-1].d).split(' ')[1]}</text></svg>`}
+function vStats(){
+  const done=Object.keys(S.done).filter(d=>d<=TODAY).sort(),days=[...new Set([...done,...logDays()])].filter(d=>d<=TODAY).sort(),N=12,mon0=monday(TODAY);
+  const wks=[...Array(N)].map((_,i)=>addD(mon0,(i-N+1)*7)),lab=wks.map(m=>{const d=pd(m);return d.getDate()+'/'+(d.getMonth()+1)});
+  const inW=(d,m)=>d>=m&&d<addD(m,7),perW=wks.map(m=>days.filter(d=>inW(d,m)).length);
+  const mStart=TODAY.slice(0,8)+'01',thisM=days.filter(d=>d>=mStart).length;
+  let streak=0;for(let i=N-1;i>=0;i--){if(perW[i])streak++;else if(i===N-1)continue;else break}
+  // τήρηση πλάνου: τελευταίες 4 ολοκληρωμένες εβδομάδες + η τρέχουσα μέχρι σήμερα
+  let pl=0,dn=0;for(let i=N-5;i<N;i++){const wp=weekPlan(wks[i]);for(let j=0;j<7;j++){const d=addD(wks[i],j);if(d>TODAY||d<S.start||!wp.p[j])continue;pl++;if(S.done[d])dn++}}
+  const avg8=perW.slice(-9,-1).reduce((a,b)=>a+b,0)/8;
+  let h=`<div class="head"><span class="eyebrow">Στατιστικά</span><h1>Η πρόοδός σου</h1><p class="muted">Από τις προπονήσεις που ολοκλήρωσες και τα σετ που κατέγραψες σε αυτή τη συσκευή.</p></div>`;
+  if(!days.length)return h+`<p class="muted">Δεν υπάρχουν ακόμη δεδομένα. Ολοκλήρωσε μια προπόνηση ή κατάγραψε κιλά και επαναλήψεις στην καρτέλα «Σήμερα».</p>`+bwStats();
+  // Συνέπεια
+  h+=`<h2>Συνέπεια</h2><div class="stat3"><div><b class="num">${days.length}</b><span class="small muted">προπονήσεις συνολικά</span></div><div><b class="num">${thisM}</b><span class="small muted">αυτόν τον μήνα</span></div><div><b class="num">${perW[N-1]}</b><span class="small muted">αυτή την εβδομάδα</span></div></div>
+   <div class="stat3"><div><b class="num">${fnum(avg8,1)}</b><span class="small muted">μέσος όρος/εβδ. (8 εβδ.)</span></div><div><b class="num">${streak}</b><span class="small muted">εβδομάδες στη σειρά</span></div><div><b class="num">${pl?Math.round(dn/pl*100)+'%':'—'}</b><span class="small muted">τήρηση πλάνου (5 εβδ.)</span></div></div>
+   <div class="card"><p class="small muted">Προπονήσεις ανά εβδομάδα (από Δευτέρα)</p>${barChart(perW,lab,N-1)}</div>`;
+  // Όγκος
+  const vol=wks.map(m=>{let v=0;for(let j=0;j<7;j++)setsOn(addD(m,j)).forEach(x=>v+=x.w*x.r);return Math.round(v)}),setsW=wks.map(m=>{let n=0;for(let j=0;j<7;j++)n+=setsOn(addD(m,j)).length;return n});
+  const upTo=dow(TODAY),volPrevSame=(()=>{let v=0;for(let j=0;j<=upTo;j++)setsOn(addD(wks[N-2],j)).forEach(x=>v+=x.w*x.r);return Math.round(v)})();
+  const mus={};for(let j=0;j<7;j++)setsOn(addD(TODAY,-j)).forEach(x=>{const e=E[x.id];e.p.forEach(k=>mus[k]=(mus[k]||0)+1);e.s.forEach(k=>mus[k]=(mus[k]||0)+.5)});
+  const ml=Object.entries(mus).sort((a,b)=>b[1]-a[1]),mm=ml.length?ml[0][1]:1;
+  h+=`<h2>Όγκος</h2><div class="stat3"><div><b class="num">${vol[N-1].toLocaleString('el-GR')}</b><span class="small muted">kg αυτή την εβδ.</span></div><div><b class="num">${pctTxt(pct(vol[N-1],volPrevSame))}</b><span class="small muted">σε σχέση με την προηγ. εβδ. ως την ίδια μέρα</span></div><div><b class="num">${setsW[N-1]}</b><span class="small muted">σετ αυτή την εβδ.</span></div></div>
+   <div class="card"><p class="small muted">Συνολικός όγκος (κιλά × επαναλήψεις) ανά εβδομάδα</p>${barChart(vol,lab,N-1,' kg')}</div>
+   <div class="card"><p class="small muted" style="margin-bottom:6px">Σετ ανά μυ, τελευταίες 7 μέρες (κύριος μυς = 1, βοηθητικός = ½)</p>${ml.length?ml.map(([k,v])=>`<div class="mbar"><span class="small">${M[k]}</span><i style="width:${Math.max(4,v/mm*90)}px"></i><span class="small num">${fnum(v,v%1?1:0)}</span></div>`).join(''):'<p class="small muted">Δεν υπάρχουν σετ τις τελευταίες 7 μέρες.</p>'}</div>`;
+  // Εξέλιξη δύναμης
+  const ids=Object.keys(S.logs).filter(id=>E[id]&&series(id).length).sort((a,b)=>series(b).length-series(a).length);
+  const prM=ids.reduce((n,id)=>{const s=series(id);let best=0,c=0;s.forEach(p=>{if(p.b>best+.01){if(p.d>=mStart&&best>0)c++;best=p.b}});return n+c},0);
+  h+=`<h2>Εξέλιξη δύναμης</h2>`;
+  if(!ids.length)h+=`<p class="muted">Κατάγραψε κιλά και επαναλήψεις για να φανεί η εξέλιξη ανά άσκηση.</p>`;
+  else{h+=`<p class="small muted">Εκτιμώμενο μέγιστο (1 επανάληψη) από το καλύτερο σετ κάθε προπόνησης. Νέα ρεκόρ αυτόν τον μήνα: <b>${prM}</b>.</p><div class="card">`;
+    ids.forEach(id=>{const s=series(id),l=s[s.length-1],pr=Math.max(...s.map(p=>p.b)),ref=s.filter(p=>p.d<=addD(l.d,-28)).pop()||s[0],ch=s.length>1?pct(l.b,ref.b):null,b=bwAt(l.d);
+      h+=`<div class="prog"><div style="min-width:0"><b>${E[id].n}</b><p class="small muted num">Τελευταίο: ${BWX[id]?'σώμα +'+l.top[0]:l.top[0]} kg × ${l.top[1]} · μέγιστο ≈ ${Math.round(l.b)} kg${b?' ('+fnum(l.b/b,2)+'× βάρος)':''}<br>Ρεκόρ ${Math.round(pr)} kg · ${s.length>1?pctTxt(ch)+' από '+fmt(ref.d).split(' ')[1]:'1 καταγραφή'}${l.b>=pr-.01&&s.length>1?' · <b>νέο ρεκόρ</b>':''}</p></div>${spark(s.slice(-12))}</div>`});h+='</div>'}
+  return h+bwStats()}
+function bwStats(){const b=S.bw.slice().sort((a,c)=>a.d<c.d?-1:1);let h=`<h2>Σωματικό βάρος</h2>`;
+  if(!b.length)return h+`<p class="muted">Δεν έχεις καταγράψει βάρος. Μπορείς να το προσθέσεις από το Προφίλ.</p>`;
+  const l=b[b.length-1],f=b[0],m30=b.filter(x=>x.d<=addD(TODAY,-30)).pop();
+  // σχετική δύναμη: μέσος όρος (μέγιστο/βάρος) στις ασκήσεις με κιλά, πρώτη vs τελευταία καταγραφή
+  const rs=Object.keys(S.logs).filter(id=>E[id]&&!BWX[id]).map(id=>{const s=series(id);if(s.length<2)return null;const a=bwAt(s[0].d),z=bwAt(s[s.length-1].d);return a&&z?[s[0].b/a,s[s.length-1].b/z]:null}).filter(Boolean);
+  const rsCh=rs.length?pct(rs.reduce((a,x)=>a+x[1],0),rs.reduce((a,x)=>a+x[0],0)):null;
+  h+=`<div class="stat3"><div><b class="num">${fnum(l.kg,1)}</b><span class="small muted">kg τώρα</span></div><div><b class="num">${b.length>1?(l.kg-f.kg>0?'+':'')+fnum(l.kg-f.kg,1):'—'}</b><span class="small muted">kg από την αρχή</span></div><div><b class="num">${m30?(l.kg-m30.kg>0?'+':'')+fnum(l.kg-m30.kg,1):'—'}</b><span class="small muted">kg σε 30 μέρες</span></div></div>
+   <div class="card">${lineChart(b.map(x=>({d:x.d,v:x.kg})),'kg')}</div>
+   <p class="small muted">Δύναμη σε σχέση με το βάρος: ${rsCh==null?'χρειάζονται τουλάχιστον 2 καταγραφές σε ασκήσεις με κιλά.':`${pctTxt(rsCh)} από την πρώτη καταγραφή (μέσος όρος σε ${rs.length} ${rs.length===1?'άσκηση':'ασκήσεις'}).`}</p>`;
   return h}
 // Αναζήτηση: χωρίς τόνους και πεζά/κεφαλαία, σε όνομα, μυς, κατηγορία και αγγλικές ονομασίες· όλες οι λέξεις πρέπει να ταιριάζουν
 const AKA={pullup:'pull-up pull up',latpull:'lat pull down',bbrow:'barbell row bent over row',tbar:'t bar',cablerow:'seated cable row',dbrow:'dumbbell row one arm',sapd:'straight arm pulldown',ohp:'dumbbell shoulder press',latraise:'lateral raise side raise',revpec:'rear delt machine',ohext:'overhead triceps extension',cgbench:'close grip bench press',dips:'dip',pushdown:'triceps pushdown rope',bench:'bench press',incline:'incline dumbbell press',fly:'cable fly crossover',bbcurl:'barbell curl biceps',hammer:'hammer curl',inccurl:'incline dumbbell curl',squat:'back squat',legpress:'leg press',bulgarian:'bulgarian split squat',lunge:'lunges',legext:'leg extension',legcurl:'seated leg curl hamstring',calf:'standing calf raise',rdl:'romanian deadlift rdl',hipthrust:'hip thrust glute bridge',abduction:'hip abduction',legraise:'hanging leg raise',mpress:'military press overhead press ohp',arnold:'arnold press',frontraise:'front raise',cablelat:'cable lateral raise',rdfly:'rear delt fly reverse fly',shrug:'shrugs',chinup:'chin up',deadlift:'deadlift',pushup:'push up',dbbench:'dumbbell bench press',pecdeck:'pec deck machine fly',skull:'skull crusher lying triceps extension',cablecurl:'cable curl',kickback:'triceps kickback',preacher:'preacher curl scott',goblet:'goblet squat',stepup:'step up',adduction:'hip adduction',glutekick:'cable glute kickback',plank:'plank',crunch:'crunch',cablecrunch:'cable crunch kneeling',pallof:'pallof press anti rotation',hyperext:'back extension hyperextension υπερεκτασεις ραχιαιοι μεση',birddog:'bird dog τετραποδη ραχιαιοι',superman:'superman ραχιαιοι μεση',revhyper:'reverse hyper reverse hyperextension ραχιαιοι',revcrunch:'reverse crunch κατω κοιλιακοι',deadbug:'dead bug κατω κοιλιακοι',lyingleg:'lying leg raise κατω κοιλιακοι',kneeraise:'hanging knee raise κατω κοιλιακοι',sidebend:'side bend πλαγιοι',woodchop:'woodchop wood chop cable chop πλαγιοι',sideplank:'side plank πλαγιοι',bicycle:'bicycle crunch πλαγιοι',sumosq:'sumo squat plie',bridge:'glute bridge',sldl:'single leg rdl romanian deadlift',lyingcurl:'lying leg curl hamstring',seatcalf:'seated calf raise',goodmorning:'good morning',pullthrough:'cable pull through'};

@@ -41,10 +41,8 @@ h1{font-size:30px} h2{font-size:24px} h3{font-size:19px}
 p{margin:0}
 .muted{color:var(--muted)} .small{font-size:13px}
 .num{font-variant-numeric:tabular-nums}
-nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--bg);padding-block:10px;display:grid;grid-template-columns:repeat(6,auto);justify-content:space-between;gap:2px}
-nav.tabs button{font:600 11px var(--text);letter-spacing:-.2px;padding:9px 5px;overflow:hidden;white-space:nowrap;border-radius:10px;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer}
-@media (max-width:379px){nav.tabs button{font-size:10px;letter-spacing:-.3px;padding:9px 2px}}
-@media (max-width:339px){nav.tabs{overflow-x:auto;grid-template-columns:repeat(6,max-content)}}
+nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--bg);padding-block:10px;display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+nav.tabs button{font:600 12.5px var(--text);padding:9px 2px;border-radius:10px;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer}
 nav.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
 button{font:inherit;color:inherit}
 button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -136,6 +134,7 @@ dl.pos .f dd{font-weight:600}
 details summary{cursor:pointer;font-weight:600}
 .spark{stroke:var(--accent);fill:none;stroke-width:2}
 .spark-dot{fill:var(--accent)}
+#stats{scroll-margin-top:64px}
 .stat3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .stat3>div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 8px;text-align:center}
 .stat3 b{display:block;font-size:22px;line-height:1.1}
@@ -1846,11 +1845,11 @@ function lvCard(today){const e=estLevel();
   return h+'</div>'}
 
 // ---------- Προβολές ----------
-const TABS=[['day','Σήμερα'],['week','Εβδομάδα'],['month','Μήνας'],['stats','Στατιστικά'],['lib','Ασκήσεις'],['me','Προφίλ']];
+const TABS=[['day','Σήμερα'],['week','Εβδομάδα'],['month','Μήνας'],['lib','Ασκήσεις'],['me','Προφίλ']];
 function render(){
   document.documentElement.setAttribute('data-g',S.set.sex==='m'?'m':'f');if(!S.set.tone)S.set.tone='red';document.documentElement.setAttribute('data-tone',S.set.tone);
   document.getElementById('tabs').innerHTML=TABS.map(([k,l])=>`<button role="tab" aria-selected="${ui.tab===k}" data-act="tab" data-v="${k}">${l}</button>`).join('');
-  document.getElementById('root').innerHTML=(ui.tab==='day'?bkBanner():'')+{day:vDay,week:vWeek,month:vMonth,stats:vStats,lib:vLib,me:vMe}[ui.tab]();
+  document.getElementById('root').innerHTML=(ui.tab==='day'?bkBanner():'')+{day:vDay,week:vWeek,month:vMonth,lib:vLib,me:vMe}[ui.tab]();
 }
 function vDay(){
   const d=ui.date,mon=monday(d),i0=dow(d),wp=weekPlan(mon),wid=wp.p[i0],inf=wp.inf[i0],wk=weekIdx(d);
@@ -1924,7 +1923,7 @@ function vMonth(){
     h+='</div>'}
   h+=`<div class="row"><button class="btn" data-act="newcycle">Νέος κύκλος από αυτή την εβδομάδα</button></div>`;
   if(S.set.mode==='dates')h+=offCard();
-  h+=`<div class="row"><button class="btn" data-act="tab" data-v="stats">Στατιστικά και πρόοδος</button></div>`;
+  h+=`<div class="row"><button class="btn" data-act="stats">Στατιστικά και πρόοδος (στο Προφίλ)</button></div>`;
   return h}
 // ---------- Στατιστικά ----------
 const pct=(a,b)=>b?Math.round((a-b)/b*100):null;
@@ -1942,7 +1941,7 @@ function lineChart(pts,unit){if(pts.length<2)return'<p class="small muted">Χρ�
    <text x="0" y="12">${f(hi)}</text><text x="0" y="${H}">${f(lo)}</text><line class="ax" x1="28" x2="${W}" y1="${H}" y2="${H}"/>
    <polyline class="ln" points="${xy.map(p=>p.map(v=>v.toFixed(1)).join(',')).join(' ')}"/>${xy.map(p=>`<circle class="spark-dot" r="2.5" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}"/>`).join('')}
    <text x="30" y="${H+12}">${fmt(pts[0].d).split(' ')[1]}</text><text x="${W}" y="${H+12}" text-anchor="end">${fmt(pts[pts.length-1].d).split(' ')[1]}</text></svg>`}
-function vStats(){
+function vStats(){const H3=t=>`<h3 style="margin-top:6px">${t}</h3>`;
   const done=Object.keys(S.done).filter(d=>d<=TODAY).sort(),days=[...new Set([...done,...logDays()])].filter(d=>d<=TODAY).sort(),N=12,mon0=monday(TODAY);
   const wks=[...Array(N)].map((_,i)=>addD(mon0,(i-N+1)*7)),lab=wks.map(m=>{const d=pd(m);return d.getDate()+'/'+(d.getMonth()+1)});
   const inW=(d,m)=>d>=m&&d<addD(m,7),perW=wks.map(m=>days.filter(d=>inW(d,m)).length);
@@ -1951,10 +1950,10 @@ function vStats(){
   // τήρηση πλάνου: τελευταίες 4 ολοκληρωμένες εβδομάδες + η τρέχουσα μέχρι σήμερα
   let pl=0,dn=0;for(let i=N-5;i<N;i++){const wp=weekPlan(wks[i]);for(let j=0;j<7;j++){const d=addD(wks[i],j);if(d>TODAY||d<S.start||!wp.p[j])continue;pl++;if(S.done[d])dn++}}
   const avg8=perW.slice(-9,-1).reduce((a,b)=>a+b,0)/8;
-  let h=`<div class="head"><span class="eyebrow">Στατιστικά</span><h1>Η πρόοδός σου</h1><p class="muted">Από τις προπονήσεις που ολοκλήρωσες και τα σετ που κατέγραψες σε αυτή τη συσκευή.</p></div>`;
-  if(!days.length)return h+`<p class="muted">Δεν υπάρχουν ακόμη δεδομένα. Ολοκλήρωσε μια προπόνηση ή κατάγραψε κιλά και επαναλήψεις στην καρτέλα «Σήμερα».</p>`+bwStats();
+  let h=`<div class="stack" id="stats" style="gap:10px"><h2>Στατιστικά</h2><p class="muted">Από τις προπονήσεις που ολοκλήρωσες και τα σετ που κατέγραψες σε αυτή τη συσκευή.</p>`;
+  if(!days.length)return h+`<p class="muted">Δεν υπάρχουν ακόμη δεδομένα. Ολοκλήρωσε μια προπόνηση ή κατάγραψε κιλά και επαναλήψεις στην καρτέλα «Σήμερα».</p>`+bwStats()+'</div>';
   // Συνέπεια
-  h+=`<h2>Συνέπεια</h2><div class="stat3"><div><b class="num">${days.length}</b><span class="small muted">προπονήσεις συνολικά</span></div><div><b class="num">${thisM}</b><span class="small muted">αυτόν τον μήνα</span></div><div><b class="num">${perW[N-1]}</b><span class="small muted">αυτή την εβδομάδα</span></div></div>
+  h+=`${H3('Συνέπεια')}<div class="stat3"><div><b class="num">${days.length}</b><span class="small muted">προπονήσεις συνολικά</span></div><div><b class="num">${thisM}</b><span class="small muted">αυτόν τον μήνα</span></div><div><b class="num">${perW[N-1]}</b><span class="small muted">αυτή την εβδομάδα</span></div></div>
    <div class="stat3"><div><b class="num">${fnum(avg8,1)}</b><span class="small muted">μέσος όρος/εβδ. (8 εβδ.)</span></div><div><b class="num">${streak}</b><span class="small muted">εβδομάδες στη σειρά</span></div><div><b class="num">${pl?Math.round(dn/pl*100)+'%':'—'}</b><span class="small muted">τήρηση πλάνου (5 εβδ.)</span></div></div>
    <div class="card"><p class="small muted">Προπονήσεις ανά εβδομάδα (από Δευτέρα)</p>${barChart(perW,lab,N-1)}</div>`;
   // Όγκος
@@ -1962,19 +1961,19 @@ function vStats(){
   const upTo=dow(TODAY),volPrevSame=(()=>{let v=0;for(let j=0;j<=upTo;j++)setsOn(addD(wks[N-2],j)).forEach(x=>v+=x.w*x.r);return Math.round(v)})();
   const mus={};for(let j=0;j<7;j++)setsOn(addD(TODAY,-j)).forEach(x=>{const e=E[x.id];e.p.forEach(k=>mus[k]=(mus[k]||0)+1);e.s.forEach(k=>mus[k]=(mus[k]||0)+.5)});
   const ml=Object.entries(mus).sort((a,b)=>b[1]-a[1]),mm=ml.length?ml[0][1]:1;
-  h+=`<h2>Όγκος</h2><div class="stat3"><div><b class="num">${vol[N-1].toLocaleString('el-GR')}</b><span class="small muted">kg αυτή την εβδ.</span></div><div><b class="num">${pctTxt(pct(vol[N-1],volPrevSame))}</b><span class="small muted">σε σχέση με την προηγ. εβδ. ως την ίδια μέρα</span></div><div><b class="num">${setsW[N-1]}</b><span class="small muted">σετ αυτή την εβδ.</span></div></div>
+  h+=`${H3('Όγκος')}<div class="stat3"><div><b class="num">${vol[N-1].toLocaleString('el-GR')}</b><span class="small muted">kg αυτή την εβδ.</span></div><div><b class="num">${pctTxt(pct(vol[N-1],volPrevSame))}</b><span class="small muted">σε σχέση με την προηγ. εβδ. ως την ίδια μέρα</span></div><div><b class="num">${setsW[N-1]}</b><span class="small muted">σετ αυτή την εβδ.</span></div></div>
    <div class="card"><p class="small muted">Συνολικός όγκος (κιλά × επαναλήψεις) ανά εβδομάδα</p>${barChart(vol,lab,N-1,' kg')}</div>
    <div class="card"><p class="small muted" style="margin-bottom:6px">Σετ ανά μυ, τελευταίες 7 μέρες (κύριος μυς = 1, βοηθητικός = ½)</p>${ml.length?ml.map(([k,v])=>`<div class="mbar"><span class="small">${M[k]}</span><i style="width:${Math.max(4,v/mm*90)}px"></i><span class="small num">${fnum(v,v%1?1:0)}</span></div>`).join(''):'<p class="small muted">Δεν υπάρχουν σετ τις τελευταίες 7 μέρες.</p>'}</div>`;
   // Εξέλιξη δύναμης
   const ids=Object.keys(S.logs).filter(id=>E[id]&&series(id).length).sort((a,b)=>series(b).length-series(a).length);
   const prM=ids.reduce((n,id)=>{const s=series(id);let best=0,c=0;s.forEach(p=>{if(p.b>best+.01){if(p.d>=mStart&&best>0)c++;best=p.b}});return n+c},0);
-  h+=`<h2>Εξέλιξη δύναμης</h2>`;
+  h+=`${H3('Εξέλιξη δύναμης')}`;
   if(!ids.length)h+=`<p class="muted">Κατάγραψε κιλά και επαναλήψεις για να φανεί η εξέλιξη ανά άσκηση.</p>`;
   else{h+=`<p class="small muted">Εκτιμώμενο μέγιστο (1 επανάληψη) από το καλύτερο σετ κάθε προπόνησης. Νέα ρεκόρ αυτόν τον μήνα: <b>${prM}</b>.</p><div class="card">`;
     ids.forEach(id=>{const s=series(id),l=s[s.length-1],pr=Math.max(...s.map(p=>p.b)),ref=s.filter(p=>p.d<=addD(l.d,-28)).pop()||s[0],ch=s.length>1?pct(l.b,ref.b):null,b=bwAt(l.d);
       h+=`<div class="prog"><div style="min-width:0"><b>${E[id].n}</b><p class="small muted num">Τελευταίο: ${BWX[id]?'σώμα +'+l.top[0]:l.top[0]} kg × ${l.top[1]} · μέγιστο ≈ ${Math.round(l.b)} kg${b?' ('+fnum(l.b/b,2)+'× βάρος)':''}<br>Ρεκόρ ${Math.round(pr)} kg · ${s.length>1?pctTxt(ch)+' από '+fmt(ref.d).split(' ')[1]:'1 καταγραφή'}${l.b>=pr-.01&&s.length>1?' · <b>νέο ρεκόρ</b>':''}</p></div>${spark(s.slice(-12))}</div>`});h+='</div>'}
-  return h+bwStats()}
-function bwStats(){const b=S.bw.slice().sort((a,c)=>a.d<c.d?-1:1);let h=`<h2>Σωματικό βάρος</h2>`;
+  return h+bwStats()+'</div>'}
+function bwStats(){const b=S.bw.slice().sort((a,c)=>a.d<c.d?-1:1);let h=`<h3 style="margin-top:6px">Σωματικό βάρος</h3>`;
   if(!b.length)return h+`<p class="muted">Δεν έχεις καταγράψει βάρος. Μπορείς να το προσθέσεις από το Προφίλ.</p>`;
   const l=b[b.length-1],f=b[0],m30=b.filter(x=>x.d<=addD(TODAY,-30)).pop();
   // σχετική δύναμη: μέσος όρος (μέγιστο/βάρος) στις ασκήσεις με κιλά, πρώτη vs τελευταία καταγραφή
@@ -2037,7 +2036,7 @@ function vMe(){
     <p class="small muted">${bkText()} Τα δεδομένα αποθηκεύονται μόνο σε αυτή τη συσκευή. Πάρε αντίγραφο τακτικά, τουλάχιστον μία φορά την εβδομάδα, και φύλαξέ το σε άλλο μέρος.</p>
     <div class="row"><button class="btn pri" data-act="bkexport">Εξαγωγή</button><button class="btn" data-act="bkimport">Εισαγωγή</button></div>
     <input type="file" id="bkfile" accept="application/json,.json" hidden></div></div>
-   <p class="small muted">Οι οδηγίες είναι γενικές. Αν νιώσεις οξύ πόνο σε άρθρωση, σταμάτα την άσκηση και ζήτα από γυμναστή να ελέγξει την τεχνική σου.</p>`}
+   <p class="small muted">Οι οδηγίες είναι γενικές. Αν νιώσεις οξύ πόνο σε άρθρωση, σταμάτα την άσκηση και ζήτα από γυμναστή να ελέγξει την τεχνική σου.</p>${vStats()}`}
 
 // ---------- Αναλυτικοί μύες και 3D ----------
 const POSL={P:'Πόδια',G:'Γόνατα',L:'Λεκάνη και μέση',K:'Κορμός και στήθος',W:'Ώμοι και ωμοπλάτες',H:'Κεφάλι και βλέμμα',X:'Λαβή και καρποί',A:'Αγκώνες',B:'Αναπνοή',F:'Πού εστιάζεις'};
@@ -2572,6 +2571,7 @@ document.addEventListener('click',ev=>{
   if(a==='offadd'){const f=(document.getElementById('off-from')||{}).value,to=(document.getElementById('off-to')||{}).value||f;
     if(!f)ui.offErr='Διάλεξε ημερομηνία.';else if(f<TODAY)ui.offErr='Μπορείς να δηλώσεις μόνο σημερινές ή μελλοντικές μέρες.';else if(to<f)ui.offErr='Η τελική ημερομηνία είναι πριν από την αρχική.';
     else{const n=Math.round((pd(to)-pd(f))/864e5);if(n>90)ui.offErr='Το διάστημα μπορεί να είναι έως 90 μέρες.';else{for(let k=0;k<=n;k++)S.off[addD(f,k)]=ui.offMode||'move';ui.offF=ui.offT='';save()}}}
+  if(a==='stats'){ui.tab='me';render();const e=document.getElementById('stats');if(e)e.scrollIntoView();return}
   if(a==='resuggest'){const mon=monday(ui.tab==='week'?ui.date:TODAY);
     if(S.set.mode==='flex'){const q=waFor(mon).slice();if(q.some(Boolean)){S.wa[mon]=q;S.wk[mon]=suggest({...S.set,avail:q})}}
     else{S.days=suggest(S.set);if(S.set.mode==='week')delete S.wk[mon]}
